@@ -41,7 +41,7 @@ int calcLDFromBfile_old (std::string bedFile, uint nSample, long nMarker, uint* 
     if(*ncpus < nProcessors) nProcessors = *ncpus;
     omp_set_num_threads( nProcessors );
         //omp_set_num_threads( 1);
-    printf("[info] Calc LD  based on %d cpus \n", nProcessors);
+    D(printf("[info] Calc LD  based on %d cpus \n", nProcessors););
     // **************************************************************
     //                     Variables
     // **************************************************************
@@ -75,8 +75,8 @@ int calcLDFromBfile_old (std::string bedFile, uint nSample, long nMarker, uint* 
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
     fread (&headerBuf,1, nByteHeader, bedFileReader);
-    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info] This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
-    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
     if(lSize  != long(perMakerSize * nMarker + nThrowAway) )
     {
         printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n", lSize, perMakerSize * nMarker + nThrowAway, perMakerSize, nMarker);
@@ -121,7 +121,7 @@ int calcLDFromBfile_old (std::string bedFile, uint nSample, long nMarker, uint* 
     unsigned long loadSize = perMakerSize * sizeof(char) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
     uchar* bufferAllMarkers = new unsigned char [loadSize ];
 
-    printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
+    D(printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6)););
     
     fseek (bedFileReader , perMakerSize * sizeof(char) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     fread (bufferAllMarkers, 1, loadSize, bedFileReader);
@@ -287,7 +287,7 @@ int calcLDFromBfile_old (std::string bedFile, uint nSample, long nMarker, uint* 
     clock_gettime(CLOCK_MONOTONIC, &finish);
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("[info] Step2:  Time elapsed is %f. \n", elapsed );
+    D(printf("[info] Step2:  Time elapsed is %f. \n", elapsed ););
     fclose (bedFileReader);
     return 0;
 
@@ -312,7 +312,7 @@ int calcLDFromBfile (std::string bedFile, uint nSample, long nMarker, uint* theM
     if(*ncpus < nProcessors) nProcessors = *ncpus;
     omp_set_num_threads( nProcessors );
         //omp_set_num_threads( 1);
-    printf("[info] Calc LD  based on %d cpus \n", nProcessors);
+    D(printf("[info] Calc LD  based on %d cpus \n", nProcessors););
     // **************************************************************
     //                     Variables
     // **************************************************************
@@ -350,8 +350,8 @@ int calcLDFromBfile (std::string bedFile, uint nSample, long nMarker, uint* theM
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
     fread (&headerBuf,1, nByteHeader, bedFileReader);
-    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info] This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
-    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
     {
         printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n", lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
@@ -544,7 +544,7 @@ int calcLDFromBfile (std::string bedFile, uint nSample, long nMarker, uint* theM
     clock_gettime(CLOCK_MONOTONIC, &finish);
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("[info] Step2:  Time elapsed is %f. \n", elapsed );
+    D(printf("[info] Step2:  Time elapsed is %f. \n", elapsed ););
     fclose (bedFileReader);
     return 0;
 
@@ -576,7 +576,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     int nProcessors = omp_get_max_threads();
     if(*ncpus < nProcessors) nProcessors = *ncpus;
     omp_set_num_threads( nProcessors );
-    printf("[info] Calc LD  based on %d cpus \n", nProcessors);
+    D(printf("[info] Calc LD  based on %d cpus \n", nProcessors););
     // **************************************************************
     //                     Variables
     // **************************************************************
@@ -613,8 +613,14 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
     fread (&headerBuf,1, nByteHeader, bedFileReader);
-    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info] This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
-    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {
+        D(printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); );
+        formatVersion="1.9"; nThrowAway = nByteHeader;
+    };
+    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {
+        D(printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n"););
+        formatVersion="1.0"; nThrowAway = nByteHeader_older;
+    };
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
     {
         printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n", lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
@@ -659,10 +665,9 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     unsigned long loadSize = perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
     uchar* bufferAllMarkers = new uchar [loadSize ];
 
-    printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
-
-    printf("[info] LD matrix size is %d Mb. \n", int(sizeOfMarkIdx * 1.0 * sizeOfMarkIdx/1e6 * 8));
-    printf("[info] Map size is %d Mb. \n", int(sizeOfMap * 1.0 * sizeof(uint)* 4 + sizeOfMap * 1.0 * sizeof(dataType) * 1));
+    D(printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6)););
+    printf("\t[info] LD matrix size is %d Mb. \n", int(sizeOfMarkIdx * 1.0 * sizeOfMarkIdx/1e6 * 8)); 
+    D(printf("[info] Map size is %d Mb. \n", int(sizeOfMap * 1.0 * sizeof(uint)* 4 + sizeOfMap * 1.0 * sizeof(dataType) * 1)););
     
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     fread (bufferAllMarkers, 1, loadSize, bedFileReader);
@@ -715,7 +720,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     }
 
 
-    std::cout << "jump" << *jump << std::endl;
+    D(std::cout << "jump" << *jump << std::endl;);
 
  #pragma omp parallel for
     for (unsigned int i = 0; i < sizeOfMarkIdx; i ++)
@@ -795,7 +800,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     clock_gettime(CLOCK_MONOTONIC, &finish);
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("[info] Step2:  Time elapsed is %f. \n", elapsed );
+    D(printf("[info] Step2:  Time elapsed is %f. \n", elapsed ););
     fclose (bedFileReader);
     return 0;
 
@@ -1267,19 +1272,18 @@ int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMa
 #pragma omp parallel for reduction(+:nToAvert)
         for (unsigned int i = 0; i < *arrSize; i ++)
             nToAvert += toAvert[i];
-        printf("Parameter settting:  \n ");
-        printf("\t bedFile = %s \n"           , *bedFileCstr);
-        printf("\t nMarkers = %d \n"          , *nMarkers);
-        printf("\t nSamples = %d \n"          , *nSamples);
-        printf("\t nTargetMarkers = %d \n"    , *arrSize);
-        printf("\t nGenoToBeAverted = %d \n"  , nToAvert );
-        printf("\t ldCalcCutoff = %d \n"      , *cutoff);
-        printf("\t ncpus = %d \n"             , *ncpus);
-        printf("\t jump = %d \n"             , *jump);
-        
+        D(printf("Parameter settting:  \n ");                    );
+        D(printf("\t bedFile = %s \n"           , *bedFileCstr); );
+        D(printf("\t nMarkers = %d \n"          , *nMarkers);    );
+        D(printf("\t nSamples = %d \n"          , *nSamples);    );
+        D(printf("\t nTargetMarkers = %d \n"    , *arrSize);     );
+        D(printf("\t nGenoToBeAverted = %d \n"  , nToAvert );    );
+        D(printf("\t ldCalcCutoff = %d \n"      , *cutoff);      );
+        D(printf("\t ncpus = %d \n"             , *ncpus);       );
+        D(printf("\t jump = %d \n"             , *jump);         );
+        D(printf("[info] Calculating LD matrix \n "); );
         if(*withNA)
         {
-            printf("old method \n");
             calcLDFromBfile <T> (bedFile, *nSamples, *nMarkers, theMarkIdx, *arrSize, toAvert, *cutoff, ncpus, result, jump);
         }
         else

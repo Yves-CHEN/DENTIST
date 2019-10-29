@@ -15,5 +15,11 @@ using namespace std;
 typedef  float LDType;
 //typedef  double LDType;
 
+#ifdef DEBUG_DENTIST
+#  define D(x) x
+#else
+#  define D(x)
+#endif // DEBUG
+
 
 #endif

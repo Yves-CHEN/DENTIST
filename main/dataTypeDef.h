@@ -37,4 +37,9 @@ typedef unsigned char uchar;
 //  const float lamda = 0.001; // To avoid inversion fails. 
 //  #endif
 
+#ifdef DEBUG_DENTIST
+#  define D(x) x
+#else
+#  define D(x)
+#endif // DEBUG
 

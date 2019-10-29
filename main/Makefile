@@ -1,5 +1,5 @@
 # Directory of the target
-OUTPUT = lib/libLDinspect.a
+OUTPUT = ../lib/libLDinspect.a
 #
 # # Compiler
 CXX = g++
@@ -9,7 +9,7 @@ LIBTOOL = libtool --mode=link cc -static
 # EIGEN library
 mklRoot = /gpfs1/scratch/90days/uqzzhen4/local/intel/compilers_and_libraries/linux/mkl
 
-PKG_CPPFLAGS =  -m64 -I./stats/  -I$(mklRoot)/include -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL
+PKG_CPPFLAGS =  -m64 -I./stats/  -I$(mklRoot)/include -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL #-DDEBUG_DENTIST
 PKG_LIBS =   lib/libHeader.a $(mklRoot)/lib/intel64/libmkl_intel_lp64.a  $(mklRoot)/lib/intel64/libmkl_gnu_thread.a $(mklRoot)/lib/intel64/libmkl_core.a
 
 

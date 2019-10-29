@@ -60,7 +60,6 @@ void  regularizeLD (double* LDmat, int markerSize)
     }
     nRank = nRank - nZeros;
 
-    printf("Rank %d \n", nRank);
 
   
     for (int j=0; j< int(nRank * 3/4); j++) 
@@ -110,7 +109,6 @@ void findDup(T result[], double rThreshold, vector<int>& dupBearer, vector<doubl
         }
         count ++;
     }
-    printf("minValue : %e\n", minValue);
 
 
 }
@@ -119,8 +117,6 @@ void findDup2(double* r,  double rThreshold, vector<int>& dupBearer, vector<int>
 {
     uint dim  = dupBearer.size();
     vector <uint> ifDup ( dim, 0);
-    printf("ifDup size %d\n", ifDup.size());
-
     for (int i =0; i < dim; i ++)
     {
         if(ifDup [i] != 0 ) continue;
@@ -180,8 +176,6 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     // double rThreshold = 0.97;
     //double rThreshold = 0.99;
     double rThreshold = 0.995;
-
-    printf("dup threshold %f \n", rThreshold);
     vector<int> dupBearer( arrSize, -1);
     vector<double> corABS( arrSize, -1);
     vector<int> sign( arrSize, 1);
@@ -193,7 +187,6 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     uint sum =0;
     for (int i =0; i < dupBearer.size(); i ++)
         sum += (dupBearer[i] !=-1);
-    printf("number of dup %d \n", sum);
 
     int interested = -1;
     double*   zScores_tmp = new double[ arrSize]() ;
@@ -222,7 +215,6 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
         }
     }
     
-    printf("LDmat size: %d \n", arrSize - sum);
     // DENTIST ( resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp, imputedZ_tmp, rsq_tmp, zScore_e_tmp,  &lambda, &interested, &ncpus);
     DENTIST<LDType> ( resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp, imputedZ_tmp, rsq_tmp, zScore_e_tmp,  &lambda, &interested, &ncpus);
 
@@ -252,12 +244,7 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
             ifDup_unfold[i]         = true;
         }
     }
-
     delete[] resultNoDup;
-
-
-
-
     for (uint i =startIdx; i < endIdx; i ++)
     {
 
@@ -267,26 +254,10 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
         ifDup[i]     = ifDup_unfold[i - thePos]        ;
     }
 
- 
-    // vector<double> diff;
-    // for (int k = 0; k < the_zScores.size(); k ++)
-    //     diff.push_back(abs(the_zScores[k] - imputedZ[k]));
-    // sort(diff.begin(), diff.end());
-    // cout << "Degree of QC: " << Degree_QC << endl;
-    // double thresh = diff [ int(diff.size() * (1-Degree_QC)) ] ; // By default Degree_QC is 0.02. 2% qc
-    // cout << "Corresponding theshold: " << thresh << endl;
-    // cout << "Number of Diff: " << diff.size() << endl;
-    // for (int k = 0; k < the_zScores.size(); k ++)
-    // {
-    //     if(fabs(the_zScores[k] - imputedZ[k]) <= thresh)
-    //         toKeep.push_back(k);
-    // }
-
     delete[]  zScores_tmp;
     delete[] imputedZ_tmp;
     delete[]      rsq_tmp;
     delete[] zScore_e_tmp;
-
     delete[] theMarkIdx;
     delete[] toAvert;
     delete[] zScores;

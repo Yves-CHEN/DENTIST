@@ -1,4 +1,5 @@
 #include "DENTIST.h"
+#include "version.h"
 //#include <iostream>
 //#include <algorithm>
 //#include <numeric> 
@@ -16,8 +17,8 @@ int main(int argc, char* argv[])
 
 
 cout << "*******************************************************************" << endl;
-cout << "* DENTIST (Detecting Errors iN summary staTISTics)" << endl;
-cout << "* Version 0.5.0"<< endl;
+cout << "* DENTIST (Detecting Errors iN analyses of summary staTISTics)" << endl;
+cout << "* Version "<< AutoVersion::FULLVERSION_STRING << endl;
 cout << "* (C) 2018 Wenhan Chen, Zhihong Zhu and Jian Yang" << endl;
 cout << "* The University of Queensland" << endl;
 cout << "* MIT License" << endl;

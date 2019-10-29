@@ -34,7 +34,7 @@ extern "C"
         clock_gettime(CLOCK_MONOTONIC, &finish);
         elapsed = (finish.tv_sec - start.tv_sec);
         elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-        printf("Time taken %f seconds.\n", elapsed);
+        D(printf("Time taken %f seconds.\n", elapsed););
 
         if( *msg > 0 ) {
                 printf( "[error] The diagonal element of the triangular factor of A,\n" );
@@ -155,7 +155,7 @@ bool impVecOfZscore(double* LDmat, double* zScore, int* markerSize, int* winSize
     clock_gettime(CLOCK_MONOTONIC, &finish);
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("Time taken %f seconds", elapsed);
+    D(printf("Time taken %f seconds", elapsed););
 
     return (0);
 }
@@ -394,13 +394,13 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
  
 
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(VV);
-    printf("Eigen decomposition is done." );
+    D(printf("Eigen decomposition is done." ););
     int nRank = es.eigenvectors().rows();
     int nZeros = 0;
     for (int j=0; j<nRank; j++) 
         if ( es.eigenvalues()(j) < 0.0001) nZeros ++;
     nRank = nRank - nZeros;
-    cout << "nRank: "  << nRank <<"K: " << K << endl;
+    D(cout << "nRank: "  << nRank <<"K: " << K << endl;);
 
     if(K>nRank) K = nRank ;
     // K = nRank /2 ;
@@ -440,7 +440,7 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
     clock_gettime(CLOCK_MONOTONIC, &finish);
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("[info] Time elapsed is %f. \n", elapsed );
+    D(printf("[info] Time elapsed is %f. \n", elapsed ););
 
 
 
@@ -509,16 +509,14 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double* lambda,
         int* interested, int* ncpus)
 {
-
-
  
     double internalControl = 5.45;
-    printf("\n------------------------\n");
-    printf("---------ImpG  ---------\n");
-    printf("ncpus = %d \n", *ncpus);
-    printf("size  = %d \n", *markerSize);
-    printf("lambda = %f \n", *lambda);
-    printf("zscore threshold = %f \n", internalControl );
+    D(printf("\n------------------------\n");                 );
+    D(printf("--------- DENTIST  ---------\n");               );
+    D(printf("ncpus = %d \n", *ncpus);                        );
+    D(printf("size  = %d \n", *markerSize);                   );
+    D(printf("lambda = %f \n", *lambda);                      );
+    D(printf("zscore threshold = %f \n", internalControl );   );
     int nProcessors = omp_get_max_threads();
     if(*ncpus < nProcessors) nProcessors = *ncpus;
         omp_set_num_threads( nProcessors );
@@ -536,7 +534,6 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             idx2.push_back(i);
     }
 
-    printf("before running\n------------------------\n");
 
 
     std::vector<double> diff;
@@ -548,15 +545,11 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         std::vector<size_t> fullIdx_tmp;
         double threshold = 0;
         oneIteration<T>(LDmat, markerSize, zScore, idx, idx2, imputedZ, rsq, zScore_e, *nSample, *lambda, ncpus);
-
-        printf("%d, %d\n", idx.size(), idx2.size());
-
-        printf("interested %d, expected = %f, est %f \n ", *interested,zScore[*interested], imputedZ[*interested]);
         diff.resize(idx2.size());
         // for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore[idx2[i]] - imputedZ[idx2[i]]);
         for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[idx2[i]]);
         threshold = getQuantile <double> (diff , (99/100.0)) ;
-        printf("thresh %f \n", threshold);
+        D(printf("thresh %f \n", threshold););
         for(uint i = 0; i < diff.size(); i ++)
         {
             if( (diff[i] < threshold) ) 
@@ -565,7 +558,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             //     idx.push_back(idx2[i]);
         }
         oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, *lambda, ncpus);
-        printf("%d, %d\n", idx.size(), idx2.size());
+        D(printf("%d, %d\n", idx.size(), idx2.size()););
         diff.resize(fullIdx.size());
 
         for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[fullIdx[i]]);
@@ -579,11 +572,11 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
                 chisq.push_back( zScore_e[fullIdx[i]] * zScore_e[fullIdx[i]] ); 
             }
         }
-        cout << "max Chisq = " << *std::max_element(chisq.begin(), chisq.end()) << endl;
+        D(cout << "max Chisq = " << *std::max_element(chisq.begin(), chisq.end()) << endl;);
         assert(chisq.size()>2);
         double sum = std::accumulate(std::begin(chisq), std::end(chisq), 0.0);
         double inflationFactor =  sum / chisq.size();
-        printf("[Notice] Inflation factor %f \n", inflationFactor);
+        D(printf("[Notice] Inflation factor %f \n", inflationFactor);)
         fullIdx = fullIdx_tmp;
         randOrder = generateSetOfNumbers(fullIdx.size() , 20000 + t*20000);
         idx.resize(0);
@@ -596,7 +589,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
                 idx2.push_back(fullIdx[i]);
         }
 
-        printf("%d, %d\n", idx.size(), idx2.size());
+        D(printf("%d, %d\n", idx.size(), idx2.size());)
     }
 
     // //  Rescue

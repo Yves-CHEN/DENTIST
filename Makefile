@@ -1,7 +1,7 @@
 
 # Directory of the target
 #OUTPUT = DENTIST.27Oct2019.beta
-OUTPUT = ./builts/DENTIST.tmp
+OUTPUT = ./builts/DENTIST.release.29Oct2019
 
 # Compiler
 #CXX =  /gpfs1/scratch/90days/uqzzhen4/local/.local/bin/g++-7
@@ -91,4 +91,5 @@ FORCE:
 
 clean: 
 	rm -f *.o
+	rm -f ./lib/*.a
 

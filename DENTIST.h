@@ -256,6 +256,7 @@ public:
     //const char *flgs[] ;
     vector<string> flags;
     float mafThresh     ;
+    int   debugMode;
     /// to be implemented
     //  double dupThresh ;  the thresh of LD r^2 between two SNPs to be considered duplicates.
     //  int nIterations; the number interations to be performed. At least one.
@@ -320,31 +321,31 @@ public:
         thread_num    = 1;      // number of threads for QC
         flags.push_back("--thread-num");
         Degree_QC     = 0.3;    // percentage of probes to be filtered
-        flags.push_back("--degree-of-QC");
+        // flags.push_back("--degree-of-QC");
         lambda        = 0.1;    // the lambda for Ridge regression 
-        flags.push_back("--lambda");
+        // flags.push_back("--lambda");
         maxDim        = 25000;   // default max window size for imputation
-        flags.push_back("--wind");
-        minDim        = 2000;   // default min window size for imputation
-        flags.push_back("--min-wind");
+        // flags.push_back("--min-wind");
         mafThresh     = -1;   // default -1 for no restrictions on maf.
         flags.push_back("--maf");
-        targetSNP = "";
-
-        flags.push_back("--extract");
         extractFile = "";
+        flags.push_back("--extract");
+        targetSNP = "";
         flags.push_back("--target");
-
-        ignoreWarnings = false;
-        flags.push_back("--ignore-warnings");
 
         withNA = 0;
         flags.push_back("--with-NA-geno");
-
-
-    
-        flags.push_back("--wind-dist");
         maxDist = -1;
+        flags.push_back("--wind-dist");
+        minDim        = 2000;   // default min window size for imputation
+        flags.push_back("--wind");
+        debugMode  = 0;
+        flags.push_back("--debug");
+        ignoreWarnings = false;
+        flags.push_back("--ignore-warnings");
+
+
+
 
 // flags.push_back("--distance");
 // flags.push_back("--use-pvalue");
@@ -492,9 +493,6 @@ void Options::parseOptions(int nArgs, char* option_str[])
             }
             cout<< option_str[i] << " " <<  " TRUE" <<endl;
         }
-
-
-
         if(strcmp(option_str[i], "--with-NA-geno") == 0)
         {
             withNA  = 1;
@@ -505,6 +503,15 @@ void Options::parseOptions(int nArgs, char* option_str[])
             cout<< option_str[i] << " " <<  " TRUE" <<endl;
         }
 
+        if(strcmp(option_str[i], "--debug") == 0)
+        {
+            debugMode = 1;
+            if(i+1 < nArgs)
+            {
+                Options::bool_FLAG_VALID_CK(string("--debug"), option_str[i+1]);
+            }
+            cout<< option_str[i] << " " <<  " TRUE" <<endl;
+        }
 
 
 
@@ -798,8 +805,6 @@ uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx)
 {
     if(arrSize  - keepFromIdx) return 0;
     uint tmp_dim = arrSize  - keepFromIdx;
-    printf("************************************************* \n");
-    printf("[notice] tmp_dim : %d \n", tmp_dim);
     double* LD_tmp = new double [tmp_dim * tmp_dim];
     for (uint i = keepFromIdx, m=0; i < arrSize ; i ++, m ++ )
         for (uint j = keepFromIdx, n = 0; j < arrSize ; j ++, n ++ )
@@ -823,7 +828,9 @@ double logPvalueChisq(double stat)
     return ( -log10(p) ) ;
 }
 
-void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, long int nMarkers, vector<string>& rsIDs,vector<uint>& bp, vector<double>& zScores, vector<long int>& seqNos, vector<bool>& flipped, const Options& opt)
+void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, long int nMarkers,
+        vector<string>& rsIDs,vector<uint>& bp, vector<double>& zScores, vector<long int>& seqNos,
+        vector<bool>& flipped, const Options& opt)
 {
 
     
@@ -831,6 +838,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
     int    minDim      = opt.minDim;
     int    thread_num  = opt.thread_num;
     double Degree_QC   = opt.Degree_QC;
+    int    doDebug     = opt.debugMode;
     double lambda      = opt.lambda;
     string bedFile = bfileName + ".bed";
     vector<int> toKeep;
@@ -902,7 +910,6 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
 
     for (uint k = 0; k < allGaps.size() -1; k ++)
     {
-        cout << "gap id = " << k << endl;
         uint rangeSize = allGaps[k+1];
         if(rangeSize < minBlockSize /2) continue;
         if(rangeSize  - minDim < 0) continue;
@@ -917,8 +924,8 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
             //startIdx =  ceil( (endIdx + startIdx)/2.0 );
             fillStartList.push_back(quaterIdx[startIdx] ); // one quater of dist cutoff away
             fillEndList.push_back(quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ); // three quaters of dist cutoff away
-            printf("%d %d %d %d fill:%d\n", rangeSize , 
-                    startIdx, endIdx, fillStartList[fillStartList.size()-1], fillEndList[fillEndList.size()-1]);
+            D(printf("%d %d %d %d fill:%d\n", rangeSize , 
+                    startIdx, endIdx, fillStartList[fillStartList.size()-1], fillEndList[fillEndList.size()-1]););
             startIdx =  quaterIdx[quaterIdx[startIdx] ];
             //endIdx   =  nextIdx[startIdx] ;
             endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] ;
@@ -950,8 +957,9 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         uint fillEndIdx   = fillEndList[k];
 
         uint rangeSize = endIdx - startIdx;
-        cout << startIdx << ", " << endIdx << endl;
+        printf("..%.2f%%", k*1.0 / startList.size());
         int nKept = moveKeepProtect<LDType>( LD, preDim, rangeSize, startIdx - pre_start); // reUse LD part
+
         //int nKept = 0;
         zScores_tmp.resize(rangeSize);
         seqNos_tmp.resize(rangeSize);
@@ -965,8 +973,6 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
             rsIDs_tmp[i - startIdx] = ( rsIDs[i]);
             toAvert[i - startIdx] = (1-flipped[i]);
         }
-        printf("%d %d  fill: %d - %d\n", 
-                startIdx, endIdx, fillStartIdx, fillEndIdx );
         bool performed = true;
         if((endIdx - startIdx) > minDim/5 )
         {
@@ -983,19 +989,26 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         pre_end = endIdx, pre_start = startIdx, preDim = seqNos_tmp.size();
         if(!performed) preDim = 0;
     }
+    cout << endl;
 
             
     delete[] LD; 
 
     ofstream qout (qcFile);
 
-    for (uint i =0; i < zScores.size(); i ++ )
-        qout << rsIDs[i] << "\t" << zScores[i] << "\t" << imputed[i] << "\t" << rsq[i] << "\t" << ifDup[i] << endl;
-    // for (uint i =0; i < zScores.size(); i ++ )
-    // {
-    //     double stat = pow(zScores[i]-imputed[i], 2) / (1-rsq[i]);
-    //     qout << rsIDs[i] << "\t" << stat << "\t" << logPvalueChisq(stat) << "\t" << ifDup[i] << endl;
-    // }
+    if(doDebug)
+    {
+        for (uint i =0; i < zScores.size(); i ++ )
+            qout << rsIDs[i] << "\t" << zScores[i] << "\t" << imputed[i] << "\t" << rsq[i] << "\t" << ifDup[i] << endl;
+    }
+    else
+    {
+        for (uint i =0; i < zScores.size(); i ++ )
+        {
+            double stat = pow(zScores[i]-imputed[i], 2) / (1-rsq[i]);
+            qout << rsIDs[i] << "\t" << stat << "\t" << logPvalueChisq(stat) << "\t" << ifDup[i] << endl;
+        }
+    }
     qout.close();
    
 }
@@ -1108,7 +1121,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
 
 void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long int>& seqNo, vector<bool>& toFlip, vector<string>& rsID,vector<uint>& bp )
 {
-    printf("[info] Aligning GWAS to bedfile assumming the bfile SNPs are ordered.\n");
+    printf("[info] Aligning GWAS to bedfile assumming the bfile SNPs are ordered by BP.\n");
     vector<long int> alignToWhich (gtab.size(), -1);
     vector<bool    > haveFliped   (gtab.size(), false);
     int ncpus= omp_get_num_threads();
@@ -1146,7 +1159,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
             } 
         }
     }
-    cout << "aligned : " << rsID.size() << endl;
+    printf("[info]%d SNPs (rsID) were shared between the summary and reference data. \n", rsID.size());
 
 
 
@@ -1168,46 +1181,24 @@ void runQC(const Options& opt)
     // read summary
     //
     GWAS gwasDat (summmaryFile, false);
-    cout << gwasDat.rs[0]      << "\t";
-    cout << gwasDat.maf[0]     << "\t";
-    cout << gwasDat.b[0]       << "\t";
-    cout << gwasDat.se[0]      << "\t";
-    cout << gwasDat.zscore[0]  << "\n";
-    cout << gwasDat.rs[1]      << "\t";
-    cout << gwasDat.maf[1]     << "\t";
-    cout << gwasDat.b[1]       << "\t";
-    cout << gwasDat.se[1]      << "\t";
-    cout << gwasDat.zscore[1]  << "\n";
-
     // read bedfile
     BedFile  ref (bfileName, opt.mafThresh, opt.thread_num);
-    cout << ref.chrID[1]  << "\t";
-    cout << ref.bp[1]     << "\t";
-    cout << ref.rs[1]     << "\t";
-    cout << ref.A1[1]     << "\t";
-    cout << ref.A2[1]     << "\t";
-    cout << ref.seqNo[1]  << "\n";
-
 
     if(opt.targetSNP != "")
     {
-        cout << "Extracting SNPs at the target SNP : " << opt.targetSNP << endl;
+        D(cout << "Extracting SNPs at the target SNP : " << opt.targetSNP << endl;);
         uint foundAt = ~0;
         // find the SNP
         for (uint kk =0; kk < ref.bp.size(); kk ++)
-        {
-            ///uint  i = ref.include[kk];
-            uint i = kk;
-            if(ref.rs[i] == opt.targetSNP)
+            if(ref.rs[kk] == opt.targetSNP)
             {
-                foundAt = i; 
+                foundAt = kk; 
                 break;
             }
-        }
 
         if(foundAt != ~0)
         {
-            cout << "found at " << foundAt << endl;
+            printf("[info] Target %s is found at %d.\n", opt.targetSNP.c_str(),   foundAt);
             vector<uint> updatedInclude;
             for (uint kk =0; kk < ref.include.size(); kk ++)
             {
@@ -1222,13 +1213,13 @@ void runQC(const Options& opt)
             printf("[Warning] The target SNP [%s] is not found.\n", opt.targetSNP.c_str() );
             if(opt.ignoreWarnings == false) exit(-1);
         }
-        cout << ref.include.size() << " SNPs extracted ."<< endl;
+        printf("[info] %d were exracted.\n", ref.include.size());
     }
 
     // apply extraction
     if(opt.extractFile != "")
     {
-        cout << "Reading SNPs to be extracted (kept) from : " << opt.extractFile << endl;
+        D(cout << "[info] Reading SNPs to be extracted (kept) from : " << opt.extractFile << endl;);
         ifstream eFin (opt.extractFile.c_str());
         if (!eFin.is_open())
         {
@@ -1253,7 +1244,7 @@ void runQC(const Options& opt)
         }
         ref.include = updatedInclude;
         eFin.close();
-        cout << updatedInclude.size() << "  SNPs remained after  --extract." << endl;
+        printf("[info] %d SNPs remained after --extract", updatedInclude.size());
     }
 
     // Align bfile and summary data.
