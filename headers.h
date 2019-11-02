@@ -15,6 +15,10 @@ using namespace std;
 typedef  float LDType;
 //typedef  double LDType;
 
+
+const uint maxSummaryRowSize = 1000000;
+
+
 #ifdef DEBUG_DENTIST
 #  define D(x) x
 #else

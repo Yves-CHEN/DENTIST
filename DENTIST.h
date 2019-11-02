@@ -6,13 +6,17 @@
 
 #include "invoker.h"
 #include "headers.h"
-#include "gzstream/gzstream.h"
+//#include "gzstream/gzstream.h"
 #include <bitset>
 #include <numeric>
 
 #include <boost/math/distributions/inverse_chi_squared.hpp>
 #include <assert.h>
 #include "utils.h"
+#include <zlib.h>
+
+
+
 using namespace std;
 
 
@@ -33,6 +37,7 @@ public:
     vector<int>    splSize;
     vector<double> pValue;
     vector<long int>  aligned;
+    inline GWAS (){};
     GWAS (string summmaryFile );
     GWAS (string summmaryFile, bool ifGZ );
     long int M;
@@ -43,12 +48,30 @@ public:
 GWAS::GWAS (string summmaryFile, bool ifGZ)
 {
     bool warnnullfreq=false;
-    igzstream gwasFile (summmaryFile.c_str());
+    //igzstream gwasFile (summmaryFile.c_str());
     cout << "Reading GWAS summary data from [" + summmaryFile  + "]." << endl;
     int lineNum = 0;
-    string line;
-    getline(gwasFile, line);
-    const char* buf = line.c_str();
+    //string line;
+    //getline(gwasFile, line);
+    //const char* buf = line.c_str();
+
+
+    gzFile  file = gzopen(summmaryFile.c_str(), "r");
+    if (file == Z_NULL) {
+        fprintf(stderr, "gzopen error: not a gzfile. \n");
+        exit(EXIT_FAILURE); 
+    }
+    const uint maxSize = maxSummaryRowSize;
+    char buf[maxSummaryRowSize ] = "";
+    printf("Reserving %d M memory for reading. \n", maxSummaryRowSize  / 1000000);
+    // assumming there is a header and the header can be discarded.
+    if(gzgets(file, buf, maxSize) == NULL)
+    {
+        printf("ERROR: the first row of the file %s is empty.\n",summmaryFile.c_str());
+        exit(EXIT_FAILURE);
+    }
+
+
 
     if(buf[0]=='\0')
     {
@@ -64,11 +87,8 @@ GWAS::GWAS (string summmaryFile, bool ifGZ)
     }
 
 
-    while(!gwasFile.eof())
+    while(gzgets(file, buf, maxSize))
     {
-        getline(gwasFile, line);
-        const char* buf = line.c_str();
-        
         if(buf[0]!='\0'){
             vs_buf.clear();
             int col_num = split_string(buf, vs_buf, " \t\n");
@@ -132,108 +152,112 @@ GWAS::GWAS (string summmaryFile, bool ifGZ)
     }
     this->M = this->_include.size();
     cout <<"GWAS summary data of "<< this->M << " SNPs to be included from [" + string( summmaryFile) + "]." << endl;
-    gwasFile.close();
+    //gwasFile.close();
+
+
+    gzclose(file);
+
 };
-GWAS::GWAS (string summmaryFile)
-{
-    bool warnnullfreq=false;
-    ifstream gwasFile (summmaryFile);
-    if (!gwasFile.is_open())
-    {
-        //fprintf (stderr, "%s: Couldn't open file %s\n", summmaryFile, strerror (errno));
-        exit (EXIT_FAILURE);
-    }
-    cout << "Reading GWAS summary data from [" + summmaryFile  + "]." << endl;
-    int lineNum = 0;
-    char buf[MAX_LINE_SIZE];
-    gwasFile.getline(buf,MAX_LINE_SIZE);// the header
-
-   
-
-
-    if(buf[0]=='\0')
-    {
-        printf("ERROR: the first row of the file %s is empty.\n", summmaryFile.c_str());
-        exit(EXIT_FAILURE);
-    }
-    vector<string> vs_buf;
-    split_string(buf, vs_buf, " \t\n");
-    to_upper(vs_buf[0]);
-    if(vs_buf[0]!="SNP") {
-        printf("ERROR: %s should have headers that start with \"SNP\" rather than %s.\n", summmaryFile.c_str(), vs_buf);
-        exit(EXIT_FAILURE);
-    }
-
-
-    while(!gwasFile.eof())
-    {
-        gwasFile.getline(buf,MAX_LINE_SIZE);
-        
-        if(buf[0]!='\0'){
-            vs_buf.clear();
-            int col_num = split_string(buf, vs_buf, " \t\n");
-            if(col_num!=8) {
-                printf("ERROR: column number is not correct in row %d!\n", lineNum+2);
-                exit(EXIT_FAILURE);
-            }
-            if(vs_buf[0]=="NA" || vs_buf[0]=="na"){
-                printf("ERROR: the SNP name is \'NA\' in row %d.\n", lineNum+2);
-                exit(EXIT_FAILURE);
-            }
-            this->rs.push_back(vs_buf[0]);
-            if(vs_buf[1]=="NA" || vs_buf[1]=="na"){
-                printf("ERROR: allele1 is \'NA\' in row %d.\n", lineNum+2);
-                exit(EXIT_FAILURE);
-            }
-            to_upper(vs_buf[1]);
-            this->A1.push_back(vs_buf[1]);
-            
-            if(vs_buf[2]=="NA" || vs_buf[2]=="na"){
-                printf("ERROR: allele2 is \'NA\' in row %d.\n", lineNum+2);
-                exit(EXIT_FAILURE);
-            }
-            to_upper(vs_buf[2]);
-            this->A2.push_back(vs_buf[2]);
-            
-            if(vs_buf[3]=="NA" || vs_buf[3]=="na")
-            {
-                if(!warnnullfreq){
-                    warnnullfreq=true;
-                    printf("WARNING: frequency is \'NA\' in one or more rows.\n");
-                }
-                this->maf.push_back(-9);
-                
-            }
-            else {
-                this->maf.push_back(atof(vs_buf[3].c_str()));
-            }
-           
-            
-            if(vs_buf[4]=="NA" || vs_buf[4]=="na"){
-                printf("WARNING: effect size is \'NA\' in row %d.\n", lineNum+2);
-                this->b.push_back(0);
-            } else {
-                this->b.push_back(atof(vs_buf[4].c_str()));
-            }
-            if(vs_buf[5]=="NA" || vs_buf[5]=="na"){
-                printf("WARNING: standard error is \'NA\' in row %d.\n", lineNum+2);
-                this->se.push_back(-9);
-            } else {
-                this->se.push_back(atof(vs_buf[5].c_str()));
-            }
-
-            
-            this->zscore.push_back( this->b [b.size() -1]/ this->se [se.size() -1] );
-            this->pValue.push_back(atof(vs_buf[6].c_str()));
-            this->splSize.push_back(atoi(vs_buf[7].c_str()));
-            this->_include.push_back(lineNum);
-            lineNum++;
-        }
-    }
-    this->M = this->_include.size();
-    cout <<"GWAS summary data of "<< this->M << " SNPs to be included from [" + string( summmaryFile) + "]." << endl;
-    gwasFile.close();
-};
+/// GWAS::GWAS (string summmaryFile)
+/// {
+///     bool warnnullfreq=false;
+///     ifstream gwasFile (summmaryFile);
+///     if (!gwasFile.is_open())
+///     {
+///         //fprintf (stderr, "%s: Couldn't open file %s\n", summmaryFile, strerror (errno));
+///         exit (EXIT_FAILURE);
+///     }
+///     cout << "Reading GWAS summary data from [" + summmaryFile  + "]." << endl;
+///     int lineNum = 0;
+///     char buf[MAX_LINE_SIZE];
+///     gwasFile.getline(buf,MAX_LINE_SIZE);// the header
+/// 
+///    
+/// 
+/// 
+///     if(buf[0]=='\0')
+///     {
+///         printf("ERROR: the first row of the file %s is empty.\n", summmaryFile.c_str());
+///         exit(EXIT_FAILURE);
+///     }
+///     vector<string> vs_buf;
+///     split_string(buf, vs_buf, " \t\n");
+///     to_upper(vs_buf[0]);
+///     if(vs_buf[0]!="SNP") {
+///         printf("ERROR: %s should have headers that start with \"SNP\" rather than %s.\n", summmaryFile.c_str(), vs_buf);
+///         exit(EXIT_FAILURE);
+///     }
+/// 
+/// 
+///     while(!gwasFile.eof())
+///     {
+///         gwasFile.getline(buf,MAX_LINE_SIZE);
+///         
+///         if(buf[0]!='\0'){
+///             vs_buf.clear();
+///             int col_num = split_string(buf, vs_buf, " \t\n");
+///             if(col_num!=8) {
+///                 printf("ERROR: column number is not correct in row %d!\n", lineNum+2);
+///                 exit(EXIT_FAILURE);
+///             }
+///             if(vs_buf[0]=="NA" || vs_buf[0]=="na"){
+///                 printf("ERROR: the SNP name is \'NA\' in row %d.\n", lineNum+2);
+///                 exit(EXIT_FAILURE);
+///             }
+///             this->rs.push_back(vs_buf[0]);
+///             if(vs_buf[1]=="NA" || vs_buf[1]=="na"){
+///                 printf("ERROR: allele1 is \'NA\' in row %d.\n", lineNum+2);
+///                 exit(EXIT_FAILURE);
+///             }
+///             to_upper(vs_buf[1]);
+///             this->A1.push_back(vs_buf[1]);
+///             
+///             if(vs_buf[2]=="NA" || vs_buf[2]=="na"){
+///                 printf("ERROR: allele2 is \'NA\' in row %d.\n", lineNum+2);
+///                 exit(EXIT_FAILURE);
+///             }
+///             to_upper(vs_buf[2]);
+///             this->A2.push_back(vs_buf[2]);
+///             
+///             if(vs_buf[3]=="NA" || vs_buf[3]=="na")
+///             {
+///                 if(!warnnullfreq){
+///                     warnnullfreq=true;
+///                     printf("WARNING: frequency is \'NA\' in one or more rows.\n");
+///                 }
+///                 this->maf.push_back(-9);
+///                 
+///             }
+///             else {
+///                 this->maf.push_back(atof(vs_buf[3].c_str()));
+///             }
+///            
+///             
+///             if(vs_buf[4]=="NA" || vs_buf[4]=="na"){
+///                 printf("WARNING: effect size is \'NA\' in row %d.\n", lineNum+2);
+///                 this->b.push_back(0);
+///             } else {
+///                 this->b.push_back(atof(vs_buf[4].c_str()));
+///             }
+///             if(vs_buf[5]=="NA" || vs_buf[5]=="na"){
+///                 printf("WARNING: standard error is \'NA\' in row %d.\n", lineNum+2);
+///                 this->se.push_back(-9);
+///             } else {
+///                 this->se.push_back(atof(vs_buf[5].c_str()));
+///             }
+/// 
+///             
+///             this->zscore.push_back( this->b [b.size() -1]/ this->se [se.size() -1] );
+///             this->pValue.push_back(atof(vs_buf[6].c_str()));
+///             this->splSize.push_back(atoi(vs_buf[7].c_str()));
+///             this->_include.push_back(lineNum);
+///             lineNum++;
+///         }
+///     }
+///     this->M = this->_include.size();
+///     cout <<"GWAS summary data of "<< this->M << " SNPs to be included from [" + string( summmaryFile) + "]." << endl;
+///     gwasFile.close();
+/// };
 
 
 class Options
@@ -332,7 +356,6 @@ public:
         flags.push_back("--extract");
         targetSNP = "";
         flags.push_back("--target");
-
         withNA = 0;
         flags.push_back("--with-NA-geno");
         maxDist = -1;
@@ -957,7 +980,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         uint fillEndIdx   = fillEndList[k];
 
         uint rangeSize = endIdx - startIdx;
-        printf("..%.2f%%", k*1.0 / startList.size());
+        printf("..%.1f%%", k*100.0 / startList.size());
         int nKept = moveKeepProtect<LDType>( LD, preDim, rangeSize, startIdx - pre_start); // reUse LD part
 
         //int nKept = 0;
@@ -1179,8 +1202,10 @@ void runQC(const Options& opt)
 
     string qcFile = outPrefix + ".qc.txt";
     // read summary
-    //
-    GWAS gwasDat (summmaryFile, false);
+    // gzopen() can be used to read a file which is not in gzip format; in this case gzread() will directly read from the file without decompression
+    // Therefore, there is no need to judge if it is plain file or gz file.
+    GWAS gwasDat;
+    gwasDat = GWAS  (summmaryFile, true);
     // read bedfile
     BedFile  ref (bfileName, opt.mafThresh, opt.thread_num);
 
