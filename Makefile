@@ -1,7 +1,8 @@
-
 # Directory of the target
-#OUTPUT = DENTIST.27Oct2019.beta
-#OUTPUT = ./builts/DENTIST.release.29Oct2019
+dirs = builts
+
+
+# Name of the executable.
 OUTPUT = ./builts/DENTIST.tmp
 
 # Compiler
@@ -54,7 +55,13 @@ OBJ = $(SRC:.cpp=.o)
 
 all : $(OUTPUT)
 
-$(OUTPUT) :
+$(dirs): 
+	@echo "Creating $@ dirs"
+	mkdir -p $@
+
+
+
+$(OUTPUT) : | $(dirs)
 	$(CXX)  -o $(OUTPUT)   $(OBJ) $(PKG_LIBS) $(CXXFLAGS) $(LIB) 
 
 $(OBJ) : $(HDR)

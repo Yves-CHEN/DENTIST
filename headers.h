@@ -1,14 +1,21 @@
 #ifndef __HEADERS__
 #define __HEADERS__
-#include <iostream>
-#include <fstream>
 #include <algorithm>
-#include <numeric> 
-#include <vector> 
-#include <string> 
-#include <omp.h>
+#include <assert.h>
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <Eigen/Dense> 
+#include <fstream>
+#include <iostream>
 #include <map>
+#include <numeric> 
+#include <omp.h>
+#include <string> 
+#include <vector> 
 
+
+#include "utils.h"
 
 using namespace std;
 

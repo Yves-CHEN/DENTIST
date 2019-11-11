@@ -1,5 +1,4 @@
 #ifndef __DENTIST__
-
 #define __DENTIST__
 
 #define MAX_LINE_SIZE 0x10000
@@ -12,8 +11,10 @@
 
 #include <boost/math/distributions/inverse_chi_squared.hpp>
 #include <assert.h>
-#include "utils.h"
 #include <zlib.h>
+#include  "bedfile.h"
+#include  "bld.io.h"
+#include  "options.h"
 
 
 
@@ -260,555 +261,9 @@ GWAS::GWAS (string summmaryFile, bool ifGZ)
 /// };
 
 
-class Options
-{
-public:
 
-    string summmaryFile;
-    string bfileName   ;
-    string outPrefix   ;
-    int    maxDim      ;
-    int    minDim      ;
-    int    maxDist;
-    int    thread_num  ;
-    double Degree_QC   ;
-    double lambda      ;
-    string targetSNP   ;
-    string extractFile;
-    bool   ignoreWarnings ;
-    int    withNA;
-    //const char *flgs[] ;
-    vector<string> flags;
-    float mafThresh     ;
-    int   debugMode;
-    /// to be implemented
-    //  double dupThresh ;  the thresh of LD r^2 between two SNPs to be considered duplicates.
-    //  int nIterations; the number interations to be performed. At least one.
-    //  int qcMethod;    1) use zscore diff 2) zscore_diff/se
-    //  int distMethod;  1) by number of snps, 2) by bp  3)by morgan distance.
-    //
-    //
-    //
-    static inline bool not_in_flags(vector<string> &flags, string str) { 
-        return find(flags.begin(),flags.end(),str) == flags.end(); 
-    };
-    static inline bool has_prefix(const string &str, const string &prefix)
-    {
-        return str.size() >= prefix.size() &&
-                str.compare(0, prefix.size(), prefix) == 0;
-    };
 
 
-    static inline void FileExist(string filename)
-    {
-        ifstream ifile(filename.c_str());
-        if(!ifile) throw("Error: can not open the file ["+filename+"] to read.");
-    };
-
-
-
-    static inline void bool_FLAG_VALID_CK(string str, const char* flag)
-    {
-        if( !(flag==NULL || has_prefix(flag, "--"))  )
-        {
-            // fprintf (stderr, "Please verify the flag %s!: \n",
-            //          str.c_str());
-            exit (EXIT_FAILURE);
-        }
-
-
-    }
-    static inline void FLAG_VALID_CK(string str, const char* flag)
-    {
-        if(flag==NULL || has_prefix(flag, "--"))
-        {
-            // fprintf (stderr, "Please verify the flag %s!: \n",
-            //          str.c_str());
-            exit (EXIT_FAILURE);
-        }
-    };
-
-
-
-    void FLAGS_VALID_CK(int option_num, char* option_str[]);
-    
-
-
-    inline Options()
-    {
-        summmaryFile  = ""; 
-        flags.push_back("--gwas-summary"); //summmaryFile
-        bfileName     = "";
-        flags.push_back("--bfile");  // bed file
-        outPrefix     = "out";  // default output prefix
-        flags.push_back("--out");
-        thread_num    = 1;      // number of threads for QC
-        flags.push_back("--thread-num");
-        Degree_QC     = 0.3;    // percentage of probes to be filtered
-        // flags.push_back("--degree-of-QC");
-        lambda        = 0.1;    // the lambda for Ridge regression 
-        // flags.push_back("--lambda");
-        maxDim        = 25000;   // default max window size for imputation
-        // flags.push_back("--min-wind");
-        mafThresh     = -1;   // default -1 for no restrictions on maf.
-        flags.push_back("--maf");
-        extractFile = "";
-        flags.push_back("--extract");
-        targetSNP = "";
-        flags.push_back("--target");
-        withNA = 0;
-        flags.push_back("--with-NA-geno");
-        maxDist = -1;
-        flags.push_back("--wind-dist");
-        minDim        = 2000;   // default min window size for imputation
-        flags.push_back("--wind");
-        debugMode  = 0;
-        flags.push_back("--debug");
-        ignoreWarnings = false;
-        flags.push_back("--ignore-warnings");
-
-
-
-
-// flags.push_back("--distance");
-// flags.push_back("--use-pvalue");
-
-    }
-
-
-    void parseOptions(int nArgs, char* option_str[]);
-
-
-
-};
-
-
-void Options::FLAGS_VALID_CK(int option_num, char* option_str[])
-{
-    if(option_num<3)
-    {
-        cout<<"Flags include:"<<endl;
-        int cur_mark=0;
-        for(int i=0;i<flags.size();i++)
-        {
-            int tmp=i>>2;
-            if(tmp>cur_mark)
-            {
-                cout<<endl;
-                cur_mark=tmp;
-            }
-            cout<<flags[i]<<",";
-        }
-        cout<<endl;
-        exit (EXIT_FAILURE);
-    }
-    for(int i=0;i<option_num;i++)
-    {
-        if(has_prefix(option_str[i],"--"))
-            if(not_in_flags(flags, option_str[i]))
-            {
-                //fprintf (stderr, "%s: Invalid option\n", option_str[i]);
-                exit (EXIT_FAILURE);
-            }
-    }
-
-}
-
-void Options::parseOptions(int nArgs, char* option_str[])
-{
-    FLAGS_VALID_CK(nArgs, option_str);
-    for(int i = 0; i < nArgs; i ++)
-    {
-        if(strcmp(option_str[i],"--gwas-summary")==0)
-        {
-            summmaryFile = option_str[++i];
-            Options::FLAG_VALID_CK(string("--gwas-summmary"), summmaryFile.c_str());
-            cout<< option_str[i-1] << " " <<  summmaryFile <<endl;
-            FileExist(summmaryFile);
-        }
-
-
-        if(strcmp(option_str[i], "--bfile") == 0)
-        {
-            bfileName = option_str[++i];
-            Options::FLAG_VALID_CK(string("--bfile"), bfileName.c_str());
-            cout<< option_str[i-1] << " " <<  bfileName <<endl;
-            FileExist(bfileName + ".bed");
-            FileExist(bfileName + ".bim");
-            FileExist(bfileName + ".fam");
-        }
-        if(strcmp(option_str[i], "--out") == 0)
-        {
-            outPrefix = option_str[++i];
-            Options::FLAG_VALID_CK(string("--out"), outPrefix.c_str());
-            cout<< option_str[i-1] << " "<< outPrefix <<endl;
-            // CommFunc::FileExist(oproblstName);
-        }
-        if(strcmp(option_str[i], "--thread-num") == 0){
-            thread_num = atoi(option_str[++i]);
-            cout << option_str[i-1] << " " << thread_num<< endl;
-            if(thread_num < 0)
-            {
-                fprintf (stderr, "Error: --thread-num should be over 0.\n");
-                exit (EXIT_FAILURE);
-            }
-        }
-
-        if(strcmp(option_str[i], "--degree-of-QC") == 0){
-            Degree_QC = atof(option_str[++i]);
-            cout << option_str[i-1] << " " << Degree_QC  << endl;
-            if(Degree_QC  < 0 || Degree_QC >= 1) 
-            {
-                fprintf (stderr, "Error: --degree-of-QC should be between 0 and 1.\n");
-                exit (EXIT_FAILURE);
-            }
-        }
-        if(strcmp(option_str[i], "--lambda") == 0){
-            lambda = atof(option_str[++i]);
-            cout << option_str[i-1] << " " << lambda << endl;
-            if(Degree_QC  < 0 || Degree_QC >= 0.1) 
-            {
-                fprintf (stderr, "Error: --lambda should be between 0 and 0.1.\n");
-                exit (EXIT_FAILURE);
-            }
-        }
-        if(strcmp(option_str[i], "--maf") == 0)
-        {
-            mafThresh = atof ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--maf"), bfileName.c_str());
-            cout<< option_str[i-1] << " " <<  mafThresh <<endl;
-        }
-
-
-        if(strcmp(option_str[i], "--wind-dist") == 0)
-        {
-            maxDist = atof ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--wind-dist"), bfileName.c_str());
-            cout<< option_str[i-1] << " " <<  maxDist <<endl;
-        }
-
-        if(strcmp(option_str[i], "--wind") == 0)
-        {
-            maxDim = atof ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--wind"), bfileName.c_str());
-            cout<< option_str[i-1] << " " <<  maxDim <<endl;
-        }
-
-        if(strcmp(option_str[i], "--target") == 0)
-        {
-            targetSNP = ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--target"), targetSNP.c_str());
-            cout<< option_str[i-1] << " " <<  targetSNP <<endl;
-        }
-        if(strcmp(option_str[i], "--extract") == 0)
-        {
-            extractFile = ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--extract"), extractFile.c_str());
-            cout<< option_str[i-1] << " " <<  extractFile <<endl;
-        }
-
-        if(strcmp(option_str[i], "--ignore-warnings") == 0)
-        {
-            ignoreWarnings = true;
-            if(i+1 < nArgs)
-            {
-                Options::bool_FLAG_VALID_CK(string("--ignore-warnings"), option_str[i+1]);
-            }
-            cout<< option_str[i] << " " <<  " TRUE" <<endl;
-        }
-        if(strcmp(option_str[i], "--with-NA-geno") == 0)
-        {
-            withNA  = 1;
-            if(i+1 < nArgs)
-            {
-                Options::bool_FLAG_VALID_CK(string("--with-NA-geno"), option_str[i+1]);
-            }
-            cout<< option_str[i] << " " <<  " TRUE" <<endl;
-        }
-
-        if(strcmp(option_str[i], "--debug") == 0)
-        {
-            debugMode = 1;
-            if(i+1 < nArgs)
-            {
-                Options::bool_FLAG_VALID_CK(string("--debug"), option_str[i+1]);
-            }
-            cout<< option_str[i] << " " <<  " TRUE" <<endl;
-        }
-
-
-
-            
-
-    }
-
-}
-
-
-
-
-class BedFile
-{
-public:
-    vector<string> A1;
-    vector<string> A2;
-    vector<string> chrID;
-    vector<string> rs;
-    vector<long int> seqNo;
-    vector<int>    bp;
-    vector<uint>   include;
-    vector<double> maf;
-    vector<double> geneticDist;
-    long int M;
-    long int N;
-    inline long int size(){return (rs.size());};
-    vector<double> calcMaf (string bfileName, long int N, long int M, uint ncpus);
-    BedFile(string bfileName, float maf, uint ncpus);
-
-
-};
-
-
-vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uint ncpus)
-{
-    long int nSample = N;
-    long int nMarker = M;
-    long int sizeOfMarkIdx = M;
-    string bedFile = bfileName + ".bed";
-    string bimFile = bfileName + ".bim";
-    // **************************************************************
-    ///                    set timer
-    // **************************************************************
-    struct timespec start, finish;
-    double elapsed;
-    // **************************************************************
-    ///                    set number of cpus
-    // **************************************************************
-    int nProcessors = omp_get_max_threads();
-    if(ncpus < nProcessors) nProcessors = ncpus;
-    omp_set_num_threads( nProcessors );
-        //omp_set_num_threads( 1);
-    printf("[info] Calculating frequencies with %d cpus \n", nProcessors);
-    // **************************************************************
-    //                     Variables
-    // **************************************************************
-    typedef unsigned short dataType;
-    uint processSamplePerRound = sizeof(dataType)*8 /2;
-    //uint perMakerSize = ceil ( (nSample) / 1.0 / processSamplePerRound );
-    uint perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
-    uint perMakerSize = int( (nSample) / 1.0 / processSamplePerRound );
-    uint nBlanks   = ( processSamplePerRound - (nSample) %
-                processSamplePerRound  ) % processSamplePerRound; //
-    long lSize =0;
-    /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes
-    //in older version.
-    int const nByteHeader = 9;
-    uchar headerCoding[nByteHeader +1 ] = { 0x6c, 0x1b, 0x01, 0xdc, 0x0f, 0xe7,
-                                            0x0f, 0x6b, 0x01};
-    int const nByteHeader_older = 3;
-    std::string formatVersion = "";
-    int nThrowAway = 0;
-    uchar  headerBuf[nByteHeader ] ;
-    //uint nKeptSample = nSample;
-    uint nKeptSample = perMakerSize * processSamplePerRound;
-    std::vector<double>   GENO_VAR (sizeOfMarkIdx, -1 );
-    std::vector<double>   GENO_Ex  (sizeOfMarkIdx, -1 );
-    std::vector<double>   GENO_sum11  (sizeOfMarkIdx, -1 ); // sum of sample with genotype 11
-
-    // **************************************************************
-    //                1. validation of the bfile version
-    // 2. validation of the bed file size, given the number of markers and  samples
-    // **************************************************************
-    FILE* bedFileReader = fopen ( bedFile.c_str()  , "rb" );
-    if (bedFileReader ==NULL) {fputs ("File not found error",stderr); }
-    fseek (bedFileReader, 0 , SEEK_END);
-    lSize = ftell (bedFileReader);
-    rewind (bedFileReader);
-    /// This checks the version of bed file. Examine if there is damage to
-    /// bedfile, in which case, the estimated bed file size would be inconsistent with the
-    /// acutal size.
-    fread (&headerBuf,1, nByteHeader, bedFileReader);
-
-    if(!memcmp(headerCoding, headerBuf, nByteHeader)) 
-        {printf("[info] This bed file is plink 1.9 bedfile format. (Newer) \n"); 
-        formatVersion="1.9"; nThrowAway = nByteHeader;};
-    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) 
-        {printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n");
-         formatVersion="1.0"; nThrowAway = nByteHeader_older;};
-    if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
-    {
-        printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n",
-            lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
-    }
-
-
-
-    ////////////////////////////////////////////////////
-    /// Creating map for a bype.
-    /// number of ones,  00 coded for 0 in  a additive model, 11 for 2, 10 or 01 for 1
-    /// This step assumes no missingness. (10 for missing.)
-    ///    mapper : 65536 = 2 ^ (2*8 bits)
-    ///
-    size_t const sizeOfMap = (size_t) (pow( 2 , (sizeof(dataType) * 8) ));
-    // invCountOnes is a "function (aa)  aa = ~aa; bitset<8> (aa).count"
-    // mapper2   is a "function (aa) aa = ~aa; aa & (aa<<1) & 0xaa" 
-    // mapper3   is a "function (aa)  aa & (aa<<1) & 0xaa" 
-    // countOnes is a "function (aa)  bitset<8> (aa).count"
-    // mapper5   is a "function (aa)  aa = ~aa ; ( ((aa ^ aa <<1) & 0xaa ) >>1
-    // ) *3"
-    uint      invCountOnes  [sizeOfMap ] = {0};
-    uint      mapper2[sizeOfMap ]        = {0};
-    uint      mapper3[sizeOfMap ]        = {0};
-    uint      countOnes[sizeOfMap ]      = {0};
-    dataType  mapper5[sizeOfMap ]        = {0};
-    dataType  markMissing[sizeOfMap ]    = {0};
-#pragma omp parallel for 
-    for (unsigned int i = 0; i < sizeOfMap ; i ++)
-        countOnes[i] = (std::bitset<sizeof(dataType)*8> (i)).count();
-    dataType screener = dataType (0xaaaaaaaaaaaaaaaa); /// the 64bit value automatically truncated to the dataType size.
-#pragma omp parallel for 
-    for (unsigned int i = 0; i < sizeOfMap ; i ++)
-    {
-        dataType aa = (dataType)(i);
-        invCountOnes [i] = countOnes[aa];
-        mapper2[i]       = countOnes[(dataType)(aa & (aa << 1 ) & screener )];
-        mapper3[i]       = countOnes[(dataType)((dataType)(i) & ((dataType)(i) << 1 ) & screener) ];
-        markMissing[i]   =  ((aa ^ aa <<1) & screener & ~aa ) ;
-        markMissing[i]  = ~( markMissing[i] | (markMissing[i] >> 1) );
-    }
-
-
-
-    uint maxBlockSize = 80000000;  // 80M
-    vector <uint> startingIdx; 
-    vector <uint> readLen; 
-    assert(maxBlockSize>nSample *2);
-    uint oneUnit = uint( maxBlockSize / nSample);
-    int counter = 0;
-    while( sizeOfMarkIdx >  (oneUnit) ) 
-    {
-        startingIdx.push_back (counter);
-        readLen.push_back(oneUnit);
-        counter  +=  oneUnit;
-        sizeOfMarkIdx -= oneUnit;
-    }
-    if(sizeOfMarkIdx > 0)
-    {
-        startingIdx.push_back (counter);
-        readLen.push_back(sizeOfMarkIdx);
-    }
-
-
-//    for (int i = 0; i < readLen.size(); i ++ )
-//        cout << readLen[i] << "\t";
-//    cout << endl;
-//
-//    for (int i = 0; i < readLen.size(); i ++ )
-//        cout << startingIdx[i] << "\t";
-//    cout << endl;
-
-    vector<double>   maf (nMarker, -1);
-    for (uint block_i =0; block_i < readLen.size(); block_i ++)
-    {
-
-        unsigned long loadSize = perMakerSizeOrig * sizeof(uchar) * readLen[block_i] ;
-        uchar* bufferAllMarkers = new uchar [loadSize ];
-        fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (startingIdx[block_i]) + nThrowAway, SEEK_SET );
-        fread (bufferAllMarkers, 1, loadSize, bedFileReader);
-        dataType*  bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
-        dataType** GENO = new dataType* [readLen[block_i]] ;
-#pragma omp parallel for
-        for (unsigned int i = 0; i < readLen[block_i]; i ++)
-        {
-            GENO[i] = (dataType*) (perMakerSizeOrig * i + bufferAllMarkers);
-        }
-#pragma omp parallel for
-        for (unsigned int i = 0; i < readLen[block_i] ; i ++)
-        {
-            dataType* GENO_i = GENO[i] ;
-            uint      nMissing = 0;
-            double    E_i = 0;
-            dataType  marker = 0  ;
-            double    sum_i = 0;
-            for (unsigned int k =0; k < perMakerSize; k ++)
-            {
-                marker    = markMissing[ GENO_i[k]  ]  & markMissing[GENO_i[k]]   ;
-                nMissing += countOnes[(dataType)(~marker)];
-                sum_i    += countOnes[GENO_i [k] & marker];
-            }
-            E_i         = double(sum_i  ) / (nKeptSample - nMissing);
-            maf[startingIdx[block_i] + i] = E_i / 2;
-        }
-
-
-
-        delete [] bufferAllMarkers;
-        delete [] GENO;
-
-    }
-
-    return maf;
-
-
-
-
-
-
-};
-
-
-BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
-{
-    string bimFile = bfileName + ".bim";
-    ifstream Bim(bimFile.c_str());
-    int ibuf = 0;
-    string cbuf = "0";
-    double dbuf = 0.0;
-    string str_buf;
-    long int rowNum = 0;
-    while (Bim) 
-    {
-        Bim >> str_buf;
-        if (Bim.eof()) break;
-        this->chrID.push_back( str_buf);
-        Bim >> str_buf;
-        this->rs.push_back(str_buf);
-        Bim >> dbuf;
-        this->geneticDist.push_back(dbuf);
-        Bim >> ibuf;
-        this->bp.push_back(ibuf);
-        Bim >> cbuf;
-        to_upper(cbuf);
-        this->A1.push_back(cbuf.c_str());
-        Bim >> cbuf;
-        to_upper(cbuf);
-        this->A2.push_back(cbuf.c_str());
-        this->seqNo.push_back(rowNum);
-        rowNum  ++;
-    }
-    Bim.close();
-    M = this -> rs.size();
-    string famFile = bfileName + ".fam";
-    ifstream fin(famFile.c_str());
-    int N = 0;
-    string line;
-    while (getline(fin, line)) N++;
-    fin.close();
-    this->N = N;
-    this->maf = calcMaf (bfileName, N, M, ncpus);
-
-    for (uint i = 0; i < this->maf.size(); i ++)
-    {
-        if( (this->maf[i] <= 0.5 && this->maf[i] > minMaf) ||  (this->maf[i] > 0.5 && 1- this->maf[i] > minMaf)  )
-        {
-            this->include.push_back(i);
-        }
-
-    }
-
-
-
-}
 uint moveKeep(double* LD, uint arrSize, uint currentDim, uint keepFromIdx)
 {
     uint m = 0;
@@ -832,15 +287,10 @@ uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx)
     for (uint i = keepFromIdx, m=0; i < arrSize ; i ++, m ++ )
         for (uint j = keepFromIdx, n = 0; j < arrSize ; j ++, n ++ )
             LD_tmp[m *  tmp_dim + n ] = LD[i * arrSize + j];
-
-
-
     uint m = 0;
     for (m = 0; m < tmp_dim; m ++ )
         for (uint n = 0; n < tmp_dim;  n ++ )
             LD[m *  currentDim + n ] = LD_tmp[m * tmp_dim + n];
-
-
     delete[] LD_tmp;
     return m;
 }
@@ -908,7 +358,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
 
     
     // ************************************************************************
-    // Finding all the gaps greater than 1 Mb in size including the centromere
+    // Finding all the gaps greater than k Mb in size including the centromere
     // The starting and ending of a chromosome are counted as two gaps.
     //-------------------------------------------
     vector<long int> diff;
@@ -979,6 +429,10 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         uint fillStartIdx = fillStartList[k];
         uint fillEndIdx   = fillEndList[k];
 
+
+        cout << startIdx << endl;
+        cout << endIdx   << endl;
+        //readLDFromFile_FromTo("test2", 2e6,startIdx,endIdx);  
         uint rangeSize = endIdx - startIdx;
         printf("..%.1f%%", k*100.0 / startList.size());
         int nKept = moveKeepProtect<LDType>( LD, preDim, rangeSize, startIdx - pre_start); // reUse LD part
@@ -1202,8 +656,9 @@ void runQC(const Options& opt)
 
     string qcFile = outPrefix + ".qc.txt";
     // read summary
-    // gzopen() can be used to read a file which is not in gzip format; in this case gzread() will directly read from the file without decompression
-    // Therefore, there is no need to judge if it is plain file or gz file.
+    // gzopen() can be used to read a file which is not in gzip format;
+    //   in this case gzread() will directly read from the file without decompression
+    // Therefore, there is no need to judge if summmaryFile is plain file or gz file.
     GWAS gwasDat;
     gwasDat = GWAS  (summmaryFile, true);
     // read bedfile
@@ -1283,7 +738,6 @@ void runQC(const Options& opt)
     
 
     if(opt.maxDist != -1) {
-        printf("[Notice] --wind-dist is set, which would overwrite --wind option.\n" );
         segmentedQCed_dist (bfileName, qcFile, ref.N, ref.M,  rsID, bp, zScore, seqNo, toFlip, opt);
     } 
     else {

@@ -1,3 +1,11 @@
+
+#ifndef    __UTILS__
+#define    __UTILS__
+#endif   //__UTILS__
+
+
+#include <string> 
+using namespace std;
 #include "headers.h"
 
 

@@ -10,18 +10,18 @@ namespace AutoVersion{
     static const char STATUS[] = "Alpha";
     static const char STATUS_SHORT[] = "a";
     //Standard Version Type
-    static const long MAJOR = 1;
+    static const long MAJOR = 7;
     static const long MINOR = 0;
     static const long BUILD = 0;
-    static const long REVISION = 0;
+    static const long REVISION = 1;
     //Miscellaneous Version Types
-    static const long BUILDS_COUNT = 1;
+    static const long BUILDS_COUNT = 2;
     #define RC_FILEVERSION 1,0,0,0
     #define RC_FILEVERSION_STRING "1, 0, 0, 0\0"
-    static const char FULLVERSION_STRING[] = "0.6.0.1";
+    static const char FULLVERSION_STRING[] = "0.7.0.1";
 
     //These values are to keep track of your versioning state, don't modify them.
-    static const long BUILD_HISTORY = 1;
+    static const long BUILD_HISTORY = 2;
 
 }
 #endif //VERSION_H

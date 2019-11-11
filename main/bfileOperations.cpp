@@ -768,8 +768,8 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
             }
             else if(sizeof(*result) == 2) // short
             {
-                result[sizeOfMarkIdx * i + j] = short(LD * 1000);
-                result[sizeOfMarkIdx * j + i] = short(LD * 1000);
+                result[sizeOfMarkIdx * i + j] = short(LD * 10000);
+                result[sizeOfMarkIdx * j + i] = short(LD * 10000);
             }
             else
             {
@@ -1294,6 +1294,7 @@ int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMa
     }
 
 
+template int _LDFromBfile <short> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, short* result, int* jump, int* withNA);
 template int _LDFromBfile <float> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, float* result, int* jump, int* withNA);
 template int _LDFromBfile <double> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,double* result, int* jump, int* withNA);
 

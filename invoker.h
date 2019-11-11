@@ -1,16 +1,7 @@
 #ifndef __INVOKER__
 #define __INVOKER__
 
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <cstdio>
-#include <cmath>
-#include <cstring>
-#include <algorithm>
 #include "headers.h"
-
-#include <Eigen/Dense> 
 //#include <template>
 using namespace std;
 typedef unsigned int uint;
@@ -147,11 +138,11 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
 
     char bedFileCstr[1000] = "";
     std::strcpy ( bedFileCstr, bedFile.c_str());
-    char* head =  bedFileCstr;
-    uint  arrSize    = seqNos.size();
-    uint* theMarkIdx = new unsigned int[arrSize]  ;
-    uint* toAvert    = new unsigned int[arrSize] ;
-    double* zScores  = new double[arrSize] ;
+    char*   head       = bedFileCstr;
+    uint    arrSize    = seqNos.size();
+    uint*   theMarkIdx = new unsigned int[arrSize]  ;
+    uint*   toAvert    = new unsigned int[arrSize] ;
+    double* zScores    = new double[arrSize] ;
 
     for (uint i =0; i < arrSize; i ++)
     {
@@ -165,6 +156,7 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     //int jump = 0;
     //_LDFromBfile (&head, &nMarkers, &nSamples, theMarkIdx, &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
     _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx, &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
+    
 
     // omp_set_num_threads(ncpus);
     // Eigen::setNbThreads(ncpus);
