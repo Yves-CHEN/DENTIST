@@ -281,7 +281,7 @@ uint moveKeep(double* LD, uint arrSize, uint currentDim, uint keepFromIdx)
 template<class T>
 uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx)
 {
-    if(arrSize  - keepFromIdx) return 0;
+    if(arrSize  - keepFromIdx <= 0) return 0;
     uint tmp_dim = arrSize  - keepFromIdx;
     double* LD_tmp = new double [tmp_dim * tmp_dim];
     for (uint i = keepFromIdx, m=0; i < arrSize ; i ++, m ++ )
@@ -319,6 +319,10 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
     int maxBlockSize  = opt.maxDim;
     int minBlockSize  = 2000;
     cutoff = opt.maxDist;
+
+    bool  readLD = opt.loadLD;
+    if(readLD  && Options::FileExist2(bfileName + ".bld") == -1 )
+        stop("Cannot find the LD matrix in BLD file at [%s]", (bfileName + ".bld").c_str());
 
     // The computation should be on large enough region.
     assert(zScores.size()  - minDim > 0);
@@ -397,8 +401,8 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
             //startIdx =  ceil( (endIdx + startIdx)/2.0 );
             fillStartList.push_back(quaterIdx[startIdx] ); // one quater of dist cutoff away
             fillEndList.push_back(quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ); // three quaters of dist cutoff away
-            D(printf("%d %d %d %d fill:%d\n", rangeSize , 
-                    startIdx, endIdx, fillStartList[fillStartList.size()-1], fillEndList[fillEndList.size()-1]););
+            printf("%d %d %d %d fill:%d\n", rangeSize , 
+                    startIdx, endIdx, fillStartList[fillStartList.size()-1], fillEndList[fillEndList.size()-1]);
             startIdx =  quaterIdx[quaterIdx[startIdx] ];
             //endIdx   =  nextIdx[startIdx] ;
             endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] ;
@@ -419,8 +423,11 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
     uint pre_start = 0;
     uint preDim    = 0;
 
-
-    LDType* LD = new LDType[ (opt.maxDim + opt.minDim) *  (opt.maxDim + opt.minDim) ]();
+    uint theMaxDim = (opt.maxDim + opt.minDim);
+    LDType* LD = new LDType[  theMaxDim *  theMaxDim]();
+    //readLD = false;
+    //
+    //
 
     for (uint k = 0; k < startList.size(); k ++ )
     {
@@ -429,15 +436,74 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         uint fillStartIdx = fillStartList[k];
         uint fillEndIdx   = fillEndList[k];
 
+        cout << endIdx << ", "<< startIdx<< endl;
+        //cout << endIdx - startIdx<< endl;
+        //cout << seqNos.size()<< endl;
+        //cout << flipped.size()<< endl;
+
+
+        if(readLD)
+        {
+            // if(endIdx == seqNos.size())
+            // {
+            //     seqNos.push_back(seqNos[seqNos.size() -1]+1);
+            // }
+            bool ifPrint = false;
+            string bldLDFile = bfileName;
+            int dim = seqNos[endIdx-1] - seqNos[startIdx] +1;
+            assert (theMaxDim > dim +1);
+            float* LDFromFile = readLDFromFile_FromTo(bldLDFile,
+                    dim , seqNos[startIdx], seqNos[endIdx-1] +1, ifPrint);
+            vector<long> rtSeqNos; // target seqNos in bed, relative the 0th seqNo.
+            vector<long> toAvert; // target seqNos in bed, relative the 0th seqNo.
+            toAvert.resize(endIdx - startIdx);
+            rtSeqNos.resize(endIdx - startIdx);
+            for (uint i = startIdx; i < endIdx; i ++) {
+                rtSeqNos[i - startIdx] = (seqNos[i] - seqNos[startIdx] );
+                if(flipped[i] == 0)
+                    toAvert [i - startIdx] = 1;
+                else 
+                    toAvert [i - startIdx] = -1;
+            }
+
+            int zeros = 0;
+            int greaterThanOnes = 0;
+            double diagSum = 0;
+            for (uint i =0; i < rtSeqNos.size(); i ++)
+            {
+                for (uint j =0; j < rtSeqNos.size(); j ++)
+                {
+                    int sign = toAvert[i] * toAvert[j];
+                    LD [i * rtSeqNos.size() + j]
+                        = LDFromFile [rtSeqNos[i] * dim + rtSeqNos[j] ] *sign ;
+
+                    if(LD [i * rtSeqNos.size() + j] == 0) 
+                        zeros ++;
+
+                    
+                    if(fabs(LD [i * rtSeqNos.size() + j]) > 1) 
+                        greaterThanOnes ++;
+                               
+                }
+            }
+            cout << greaterThanOnes << ", " << zeros << endl;
+            cout << diagSum/ rtSeqNos.size() << endl;
+            delete[] LDFromFile;
+
+
+        }
+
+
 
         cout << startIdx << endl;
         cout << endIdx   << endl;
         //readLDFromFile_FromTo("test2", 2e6,startIdx,endIdx);  
         uint rangeSize = endIdx - startIdx;
         printf("..%.1f%%", k*100.0 / startList.size());
-        int nKept = moveKeepProtect<LDType>( LD, preDim, rangeSize, startIdx - pre_start); // reUse LD part
+        int nKept = 0;
+        if(!opt.loadLD )
+            nKept = moveKeepProtect<LDType>( LD, preDim, rangeSize, startIdx - pre_start); // reUse LD part
 
-        //int nKept = 0;
         zScores_tmp.resize(rangeSize);
         seqNos_tmp.resize(rangeSize);
         rsIDs_tmp.resize(rangeSize);
@@ -457,7 +523,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
                     nSamples, endIdx - startIdx +1,lambda, qcFile, thread_num, toKeep,
                     Degree_QC, imputed, rsq, zscore_e, ifDup, 
                     startIdx,
-                    fillStartIdx, fillEndIdx, LD, nKept, opt.withNA );
+                    fillStartIdx, fillEndIdx, LD, nKept, opt.withNA, readLD);
                     //(startIdx < pre_end) *  ((endIdx - startIdx)/4) + startIdx,   endIdx, LD, nKept );
         }
         else
@@ -568,11 +634,12 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
             }
             cout << "start : " << rsIDs_tmp[0] << " end: " << rsIDs_tmp[rsIDs_tmp.size()-1] << endl;
 
+            bool readLD = true;
             testMethods(bedFile, rsIDs_tmp, seqNos_tmp, toAvert, zScores_tmp, nMarkers, 
                             nSamples, endIdx - startIdx +1,lambda, qcFile, thread_num, toKeep,
                             Degree_QC, imputed, rsq, zscore_e, ifDup, 
                             startIdx,
-                            notStartInterval * (cutoff/4) + startIdx,   endIdx -  (cutoff/4) * notLastInterval, LD, nKept, opt.withNA);
+                            notStartInterval * (cutoff/4) + startIdx,   endIdx -  (cutoff/4) * notLastInterval, LD, nKept, opt.withNA, readLD);
                             //startIdx,   endIdx);
             pre_start = startIdx;
             preDim   = seqNos_tmp.size();

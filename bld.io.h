@@ -15,6 +15,9 @@
 template<class T>
 uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx);
 
+template<class T>
+void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int ncpus);
+
 
 // This loads in a block of LD start from  the [fromIdx], 
 //    the size of the block is defined the window size of the bld data.
@@ -26,7 +29,8 @@ float* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromIdx
 void writeLD2File_wind(FILE* outfile, LDType LD[], int dim, int*  rightMostIdx, int fromIdx,  int toIdx);
 //int writeLD2File_wind(FILE* outfile, LDType LD[], int dim, int* bp, int ldWind);
 
-int writeLD2File_wind(FILE* outfile, ofstream& idxfile, LDType LD[], int dim, int* bp, int ldWind, uint startIdx);
+template<class T>
+int writeLD2File_wind(FILE* outfile, ofstream& idxfile, LDType LD[], int dim, int* bp, int ldWind, uint startIdx, bool fully);
 template<class T>
 int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx,
         uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,T* result, int* jump, int* withNA);
@@ -43,38 +47,37 @@ void findRight(const int* bp, int dim, vector<int>& right, int wind)
         right[j++] = dim ;
 }
 
-
-
-
-
+template<class T>
 void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int ncpus)
 {
-    int offset =  200000; // generate offset to LDwind, which ease the saving of LD.
-    int cutoff =  LDwinSize + offset;
+    uint extendBy =  LDwinSize / 5;//slighly extended LDwind which ease the saving of LD
+    int cutoff =  LDwinSize + extendBy;
     string outPrefix (outFilePrefix);
     string rightIdxFile = outPrefix + ".ridx";
     string bldFile      = outPrefix + ".bld";
     FILE*  bldWriter   = fopen(bldFile.c_str(), "w");
     ofstream  idxfile2 (rightIdxFile.c_str());
-    uint maxDim = 10000;
+    const uint maxDim = 200000;
     // read bedfile
     BedFile  ref (bedfileName);
     string bedFile = bedfileName + ".bed";
     auto& bp   = ref.bp;
-
     vector<int> right(bp.size(), 0);
     findRight(&bp[0],bp.size(), right, cutoff);
 
     // write header to bld file.
     //    header includes 4bype * RESERVEDUNITS
-    assert (RESERVEDUNITS >=4 );
+    assert (RESERVEDUNITS >=5 );
     int reserved [RESERVEDUNITS] = {};
-    reserved[0]  = ref.N;
-    reserved[1]  = ref.M;
-    reserved[2]  = LDwinSize;
-    reserved[3]  = sizeof(LDType); // number bytes
-    for(int i = 4; i < RESERVEDUNITS; i ++) reserved[i]=-9;
+    reserved[0]  = 1;
+    reserved[1]  = ref.N;
+    reserved[2]  = ref.M;
+    reserved[3]  = LDwinSize;
+    reserved[4]  = sizeof(T); // number bytes
+    for(int i = 5; i < RESERVEDUNITS; i ++) reserved[i]=-9;
     fwrite(&reserved[0],sizeof(int), RESERVEDUNITS, bldWriter);
+
+    //bldWriter + RESERVEDUNITS
 
     //ofstream  idxfile (rightIdxFile.c_str());
     //for (int i =0; i < bp.size(); i ++)
@@ -86,7 +89,7 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
     //            << nextIdx[i] << "\n";
     //idxfile.close();
 
-    LDType* LD = new LDType[ maxDim *  maxDim ]();
+    T* LD = new T[ maxDim *  maxDim ]();
     int    jump  = 0;
     auto&  seqNo = ref.seqNo;
     int withNA = 0;
@@ -99,15 +102,17 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
 
     uint M  = ref.M;
     uint N  = ref.N;
-    int  toMove = 0;
+    uint  toMove = 0;
     uint rangeSize =0;
+
+    uint     endIdx = right[startIdx];
     do
     {
-        uint     endIdx = right[startIdx];
-        int nKept = 
-            moveKeepProtect<LDType>( LD, rangeSize, endIdx - startIdx, toMove); 
+        endIdx = right[startIdx];
+        int nKept = moveKeepProtect<T>( LD, rangeSize, endIdx - startIdx, toMove); 
         jump = nKept;
         rangeSize = endIdx - startIdx;
+        assert(rangeSize < maxDim);
         printf("..%.1f%%", startIdx *1.0 / bp.size () * 100);
         //  get LD at the range from startIdx to endIdx
         uint*   theMarkIdx = new uint[rangeSize]  ;
@@ -115,22 +120,22 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
 #pragma omp parallel for
         for (uint i = startIdx; i < endIdx; i ++) 
              theMarkIdx[i-startIdx] = seqNo[i];
-        _LDFromBfile <LDType>(&head, &M, &N, theMarkIdx, &rangeSize,
+        _LDFromBfile <T>(&head, &M, &N, theMarkIdx, &rangeSize,
                 toAvert, &cutoff,  &ncpus, LD, &jump, &withNA);
         delete[] theMarkIdx;
         delete[] toAvert;
-       //  Save LD
+        //  Save LD
         int* bp_tmp= new int[rangeSize]();
         for(uint i =0; i < rangeSize; i ++)
             bp_tmp[i] = ref.bp[startIdx + i];
-        toMove= writeLD2File_wind(bldWriter, idxfile2, LD, rangeSize, bp_tmp,
-                LDwinSize, startIdx);
+        toMove = writeLD2File_wind<T>(bldWriter, idxfile2, LD, rangeSize, bp_tmp,
+                LDwinSize, startIdx, endIdx == bp.size());
+
         assert(toMove !=0);
         startIdx += toMove;
 
     }
-    while (right[startIdx] !=  bp.size());
-
+    while (endIdx !=  bp.size());
     delete[] LD;
     idxfile2.close();
     fclose(bldWriter);
@@ -138,121 +143,13 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
 
 
 
-void saveLD_2 (string bedfileName, int ncpus)
-{
-
-    //string summmaryFile = opt.summmaryFile;
-    //string bfileName = opt.bfileName;
-    //string outPrefix = opt.outPrefix;
-    //string  idxFile  = outPrefix + ".qc.txt";
-    //
-    //int    thread_num  = opt.thread_num;
-    //int cutoff = opt.maxDist;
-    //
-    int offset =  200000;
-    int cutoff = 2000000 ;
-    int    thread_num  = 8;
-    string  bfileName = "./hrs_hm2_par1_chr22";
-    string outPrefix =  "test2";
-    string rightIdxFile = outPrefix + ".ridx";
-    string bldFile      = outPrefix + ".bld";
-    FILE*  bldWriter   = fopen(bldFile.c_str(), "w");
-    ofstream  idxfile2 (rightIdxFile.c_str());
-    uint maxDim = 10000;
-    
-    // read bedfile
-    BedFile  ref (bfileName);
-    string bedFile = bfileName + ".bed";
-    auto& bp   = ref.bp;
 
 
 
-    // The most distant neighbor for i, given the distance cutoff.
-    vector<int> nextIdx;
-    for (uint i =1; i < bp.size(); i ++ )
-        if(bp[i] - bp[0] >= cutoff) {nextIdx.push_back(i); break;}
-    for (uint i =1; i < bp.size() ; i ++ ) {
-        uint j = nextIdx[nextIdx.size() -1];
-        while( bp[j] - bp[i] < cutoff) {
-            if(j >= bp.size()-1 ) break;
-            j ++;
-        }
-        nextIdx.push_back(j);
-    }
-    // A quater of distance cutoff away from i.
-    vector<int> quaterIdx;
-    for (uint i =1; i < bp.size(); i ++ )
-        if(bp[i] - bp[0] >= cutoff/4) { quaterIdx.push_back(i); break;}
-    for (uint i =1; i < bp.size() ; i ++ ) {
-        uint j = quaterIdx[quaterIdx.size() -1];
-        while( bp[j] - bp[i] < cutoff/4) {
-            if(j >= bp.size()-1 ) break;
-            j ++;
-        }
-        quaterIdx.push_back(j);
-    }
 
 
 
-    vector<long int> diff;
-    diff.resize(bp.size());
-    adjacent_difference (bp.begin(), bp.end(), diff.begin());
 
-    vector<uint> allGaps;
-    allGaps.push_back(0);
-    uint gapSizeThresh =  1000000;
-    if(gapSizeThresh > cutoff) gapSizeThresh = cutoff;
-    for (uint i = 1; i < diff.size(); i ++)  
-        if(diff[i] > gapSizeThresh) allGaps.push_back(i);
-    allGaps.push_back(diff.size());
-    // **********************************************************************
-    // Divide into ranges
-    vector<uint> startList;
-    vector<uint> endList;
-
-    int minBlockSize = 200;
-    int minDim = 200;
-
-    vector<uint> fillStartList;
-    vector<uint> fillEndList;
-    for (uint k = 0; k < allGaps.size() -1; k ++)
-    {
-        uint rangeSize = allGaps[k+1];
-        if(rangeSize < minBlockSize /2) continue;
-        if(rangeSize  - minDim < 0) continue;
-        int  startIdx = allGaps[k], endIdx = allGaps[k+1]; 
-        endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] ;
-        //endIdx   =  nextIdx[startIdx] ;
-        int notStartInterval = 0, notLastInterval = 1;
-        do
-        {
-            startList.push_back(startIdx), endList.push_back(endIdx);
-            if(rangeSize <= endIdx ) notLastInterval = 0;
-            //startIdx =  ceil( (endIdx + startIdx)/2.0 );
-            fillStartList.push_back(quaterIdx[startIdx] ); // one quater of dist cutoff away
-            fillEndList.push_back(quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ); // three quaters of dist cutoff away
-            D(printf("%d %d %d %d fill:%d\n", rangeSize , 
-                    startIdx, endIdx, fillStartList[fillStartList.size()-1], fillEndList[fillEndList.size()-1]););
-            startIdx =  quaterIdx[quaterIdx[startIdx] ];
-            //endIdx   =  nextIdx[startIdx] ;
-            endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] ;
-            //if(endIdx - startIdx > maxBlockSize) endIdx = startIdx + maxBlockSize;
-            endIdx   =  rangeSize -  minDim > endIdx ? endIdx: rangeSize;  // This is for the last region.
-            notStartInterval  =1;
-        }
-        while ( notLastInterval );
-    }
-
-    for (uint i =0; i < startList.size(); i ++)
-        cout << startList [i] << "\t" << endList[i] << endl;
-
-
-
-  
-
-    idxfile2.close();
-    fclose(bldWriter);
-}
 
 
 // assume LD (r) is needed.
@@ -273,28 +170,42 @@ void writeLD2File_wind(FILE* outfile, LDType LD[], int dim, int*  rightMostIdx, 
     }
 }
 
-// returns where it stops saving, when the LD are not full calculated
-int writeLD2File_wind(FILE* outfile, ofstream& idxfile, LDType LD[], int dim, int* bp, int ldWind, uint startIdx)
-{
 
+
+
+// returns where it stops saving, when the LD are not full calculated
+//   mode1: write the LD matrix fully
+//   mode2: write only those satisfying ldWind > ? Mb
+template <class T>
+int writeLD2File_wind(FILE* outfile, ofstream& idxfile, T LD[], int dim, int* bp, int ldWind, uint startIdx, bool fully)
+{
     vector<int> right(dim, 0);
     findRight(bp, dim, right, ldWind);
-    int atIdx =0;
-    for (uint i =0; i < dim; i ++)
-        if(right[atIdx++] == dim) break;
-
+    int atIdx = 0 ;
+    if(!fully)
+    {
+        for (uint i =0; i < dim; i ++)
+            if(right[atIdx++] == dim) 
+                break;
+    }
+    else
+        atIdx = dim;
+    /// write index
     for(int i =0; i < atIdx;i ++)
         idxfile << i + startIdx  << "\t" << right[i] << "\t"
             << right[i] - i << endl;
-    //int* right = rightMostIdx;
+
+    
+    /// write dat
     for(int i =0; i < atIdx;i ++)
     {
         int j = right[i];
-        //cout << LD[i * dim + i +1] << endl;
-        fwrite(LD + i*dim+i +1, sizeof(LDType), j -i -1 ,  outfile);  
+        fwrite(LD + i*dim+i +1, sizeof(T), j -i -1 ,  outfile);  
     }
     return atIdx;
 }
+
+
 
 // assume LD (r) is needed.
 // assume per-chr calculation
@@ -348,82 +259,111 @@ void writeLD2File(T LD[], int dim, const int*  bp,  int ldWind, string outFileNa
 float* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromIdx,
         int toIdx, bool ifPrint)
 {
+    cout <<  "Expected to read LD in a window of " 
+        << windowSize  << " bp" << endl;
+    cout << "Read from " << fromIdx << ", "  << toIdx << endl;
     string outFilePrefix( ldDatFilePrefix);
     string rightIdxFile = string(outFilePrefix)+".ridx";
     string bldname      = string(outFilePrefix)+".bld";
     FILE*  datFile      = fopen(bldname.c_str(), "r");
     ifstream  idxfile (rightIdxFile.c_str());
-    //const int tmpReadBufferSize = 2000000; // read buffer for a row of LD
+    const uint maximalStorage = 1e10; /// 10G
+    uint dim = toIdx - fromIdx;
+    assert(dim>0);
+    if(dim > sqrt(maximalStorage/4) ) 
+        stop("[error] Too many variants [%d] to load into memory.\n", dim);
+    float* LD_typeT = new float[dim * dim](); /// where LD matrix will be loaded.
     // ----------------------------------------------------------------------------
     // read header save in integer (4bytes)
-    int headerInfo [4] = {}; // N, M, LDwindSize, LD in number of Bytes
-    fread (headerInfo,  sizeof(int), 4 ,datFile);
-    if(windowSize > headerInfo[2]) // sanity check
-    {
-        printf("[error] expected WindSize[%d] is larger than the data [%d].", 
-                    windowSize, headerInfo[2]);
-        exit(-1);
-    }
-    int SaveInNumByte = headerInfo[3];
+    int headerInfo [5] = {}; // N, M, LDwindSize, LD in number of Bytes
+    fread (headerInfo,  sizeof(int), 5 ,datFile);
+    if(windowSize > headerInfo[3]) // sanity check
+        stop("[error] expected WindSize[%d] is larger than the data [%d].\n", 
+                    windowSize, headerInfo[3]);
+    int SaveInNumByte = headerInfo[4];
     assert (toIdx - fromIdx <= windowSize);
     rewind(datFile);
+    cout << "SaveInNumByte " << SaveInNumByte << endl;
 
     // --------------------------------------------------------------------------
     // load the right most element Idx. 
-    vector<int> right;
-    uint sum  = RESERVEDUNITS * sizeof(int); // jump over bytes reserved for header
-    vector<uint> loc ;
+    //    Notice!! had a problem with int for loc, the int overflowing problem
+    vector<long long> rowLen;
+    long long sum  = RESERVEDUNITS * sizeof(int);//jump over bytes reserved for header
+    vector<long long> loc ;
     if (idxfile.is_open()) 
     {
-        int ridx =0; 
-        int snpIdx = 0;
-        int dist  = 0; // in number of SNPs
-        // expect 3-column file format:
-        while (idxfile >> snpIdx  >> ridx >> dist) 
+        uint ridx   = 0, snpIdx = 0, dist   = 0; 
+        while (idxfile >> snpIdx  >> ridx >> dist)  // expect 3-column file format
         {
             loc.push_back(sum ); 
             // *sizeof(LDTtype) :  multiply number of bytes to jump to next_i
-            //  -1  :  diagnal value is not saved
-            sum += (dist -1) * SaveInNumByte; 
-            right.push_back(ridx);
+            sum += (dist -1) * SaveInNumByte; // dist-1 as diagnal value is not saved
+            rowLen.push_back(dist);
         }
+        if(sum> pow(2, 63)) stop( "[error] long long overflowing\n");
     }
     else
-        cout << "Unable to open file [" << rightIdxFile << "]"   <<endl;
-    uint dim = toIdx - fromIdx;
-    assert(dim>0);
+        stop("Unable to open file [%s]", rightIdxFile.c_str() );
+    assert (rowLen.size() > (toIdx - fromIdx));
+
     
-    short* LD = new short[dim * dim](); /// new and set zeros
-    for (uint i = 0; i < dim; i ++)
-        LD[i*dim + i] =10000;
+    
 
-    int SaveUpTo = dim -1;
-    for(int i = fromIdx, k = 0; i < toIdx -1;i ++, k ++)
+    /// --------------------------------
+    /// Reading LD matrix.
+    if(SaveInNumByte == 2)
     {
-        // fwind
-        fseek ( datFile,  loc[i] , SEEK_SET );
-        fread(&LD [ k * dim + k +1], SaveInNumByte, SaveUpTo ,datFile);  
-        SaveUpTo  --;
+        short* LD = new short[dim * dim](); /// new and set zeros
+        for (uint i = 0; i < dim; i ++)
+            LD[i*dim + i] =10000;
+        int SaveUpTo = dim -1;
+        for(int i = fromIdx, k = 0; i < toIdx -1;i ++, k ++)
+        {
+            // fwind
+            fseek ( datFile,  loc[i] , SEEK_SET );
+            fread(&LD [ k * dim + k +1], SaveInNumByte, SaveUpTo ,datFile);  
+            SaveUpTo  --;
+        }
+        for (uint i = 0; i < dim-1; i ++)
+            for (uint j = i+1; j < dim; j ++)
+                LD[j*dim + i] = LD[i*dim + j]  ;
+        for (uint i = 0; i < dim; i ++)
+            for (uint j = 0; j < dim; j ++)
+                LD_typeT[i*dim + j] = float(LD[i*dim + j] * 1.0 / 10000)  ;
+        delete[] LD;
     }
-    for (uint i = 0; i < dim-1; i ++)
-        for (uint j = i+1; j < dim; j ++)
-            LD[j*dim + i] = LD[i*dim + j]  ;
-
-    float* LD_typeT = new float[dim * dim](); /// new and set zeros
-    for (uint i = 0; i < dim; i ++)
-        for (uint j = 0; j < dim; j ++)
-            LD_typeT[i*dim + j] = float(LD[i*dim + j] * 1.0 / 10000)  ;
-
-    if(ifPrint)
+    if(SaveInNumByte == 4)
     {
-        cout << "dim : " << dim << endl;
+        int* LD = new int[dim * dim](); /// new and set zeros
+        uint scaler  = 1000000;
+        for (uint i = 0; i < dim; i ++)
+            LD[i*dim + i] = scaler;
+        int SaveUpTo = dim -1;
+        for(int i = fromIdx, k = 0; i < toIdx -1;i ++, k ++)
+        {
+            // fwind
+            fseek ( datFile,  loc[i] , SEEK_SET );
+            fread(&LD [ k * dim + k +1], SaveInNumByte, SaveUpTo ,datFile);  
+            SaveUpTo  --;
+        }
+        for (uint i = 0; i < dim-1; i ++)
+            for (uint j = i+1; j < dim; j ++)
+                LD[j*dim + i] = LD[i*dim + j]  ;
+
+        for (uint i = 0; i < dim; i ++)
+            for (uint j = 0; j < dim; j ++)
+                LD_typeT[i*dim + j] = float(LD[i*dim + j] * 1.0 / scaler)  ;
+        delete[] LD;
+    }
+    if(ifPrint)
         for (uint i = 0; i < dim; i ++)
         {
             for (uint j = 0; j < dim; j ++)
-                cout << LD_typeT [i*dim + j]  << '\t';
+                cout << LD_typeT[j*dim + i] << "\t"  ;
             cout << endl;
         }
-    }
+
 
     fclose(datFile);
     idxfile.close();

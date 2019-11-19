@@ -133,7 +133,7 @@ void findDup2(double* r,  double rThreshold, vector<int>& dupBearer, vector<int>
 //void testMethods(string bedFile,vector<string> rsIDs, vector<string> A1,  vector<long> seqNos, vector<double> the_zScores, uint nMarkers, uint nSamples, int cutoff,double lambda, string outFileName , int ncpus, vector<int>& toKeep, double Degree_QC)
 void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, vector<int>& toAvert_Null, vector<double>& the_zScores, uint nMarkers, uint nSamples, 
         int cutoff, double lambda, string outFileName, int ncpus, vector<int>& toKeep, double Degree_QC, 
-        vector<double>& imputedZ, vector<double>& rsq, vector<double>& zScore_e, vector<bool>& ifDup, int thePos, int startIdx, int endIdx, LDType* result, uint nKept, int withNA)
+        vector<double>& imputedZ, vector<double>& rsq, vector<double>& zScore_e, vector<bool>& ifDup, int thePos, int startIdx, int endIdx, LDType* result, uint nKept, int withNA, bool preCalculated)
 {
 
     char bedFileCstr[1000] = "";
@@ -155,8 +155,61 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     int jump = nKept ;
     //int jump = 0;
     //_LDFromBfile (&head, &nMarkers, &nSamples, theMarkIdx, &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
-    _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx, &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
     
+    /// ofstream log("t1.txt");
+    /// for (uint i =0; i < arrSize; i ++)
+    /// {
+    ///     for (uint j =0; j < arrSize; j ++)
+    ///         log << result[ i *arrSize +j ] << "\t";
+    ///     log << endl;
+    /// }
+    /// log.close();
+
+    if(!preCalculated)
+       _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx,
+                &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
+
+  
+    /// LDType* tmpLD = new LDType[arrSize * arrSize]();
+    /// _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx,
+    ///             &arrSize, toAvert, &cutoff,  &ncpus, tmpLD, &jump, &withNA);
+    /// double largestDiff = 0;
+    /// uint  whichi = 0;
+    /// uint  whichj = 0;
+    /// bool found = false;
+    /// for (uint i =0; i < arrSize; i ++)
+    /// {
+    ///     if(found) break;
+    ///     for (uint j =0; j < arrSize; j ++)
+    ///     {
+    ///     double tmpDiff = fabs(result[i*arrSize + j] - tmpLD[i*arrSize + j]);
+
+    ///         if( tmpDiff > 0.001)
+    ///         {
+    ///             largestDiff = tmpDiff;
+    ///             whichi = i;
+    ///             whichj = j;
+    ///             found = true;
+    ///             break;
+    ///         }
+
+    ///     }
+    /// }
+    /// cout << rsIDs[whichi] << endl;
+    /// cout << rsIDs[whichj] << endl;
+    /// cout << whichi  << endl;
+    /// cout << whichj  << endl;
+    /// cout <<seqNos[whichi] << endl;
+    /// cout <<seqNos[whichj] << endl;
+    /// cout << result[whichi * arrSize + whichj] << endl;
+    /// cout << tmpLD[whichi * arrSize + whichj] << endl;
+    /// cout << "largestDiff " << largestDiff << endl;
+    /// delete[] tmpLD;
+
+   
+
+
+   
 
     // omp_set_num_threads(ncpus);
     // Eigen::setNbThreads(ncpus);
@@ -174,18 +227,18 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     findDup<LDType>(result, rThreshold,  dupBearer, corABS, sign);
 
     
- 
-
     uint sum =0;
     for (int i =0; i < dupBearer.size(); i ++)
         sum += (dupBearer[i] !=-1);
+
+         
 
     int interested = -1;
     double*   zScores_tmp = new double[ arrSize]() ;
     double*  imputedZ_tmp = new double[ arrSize]() ;
     double*       rsq_tmp = new double[ arrSize]() ;
     double*  zScore_e_tmp = new double[ arrSize]() ;
-    uint arrSize_tmp = arrSize - sum;
+    uint      arrSize_tmp = arrSize - sum;
     LDType* resultNoDup = new LDType[ arrSize * arrSize]() ;
     vector<string> tmp_rsIDs;
 

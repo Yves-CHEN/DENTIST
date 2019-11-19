@@ -34,13 +34,18 @@ cout << "*******************************************************************" <<
     opt.parseOptions (argc, argv);
 
 
-    if(opt.bldLDFile != "")
+    if(opt.bldLDFile != "" && opt.doCheck)
     {
         bool ifPrint = true;
         int dim = opt.readTo - opt.readFrom ;
         readLDFromFile_FromTo(opt.bldLDFile, dim , opt.readFrom, opt.readTo, ifPrint);
     }
 
+   if( opt.doWrite)
+    {
+        saveLD<short>(opt.bfileName, opt.outPrefix.c_str(), 
+                            opt.maxDist, opt.thread_num);
+    }
 
     if(opt.summmaryFile != "" && opt.bfileName != "")
         runQC(opt);

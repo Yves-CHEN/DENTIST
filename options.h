@@ -21,12 +21,16 @@ public:
 
     // for extracting LD from bld file.
     string  bldLDFile;
+    int   windSize;
     uint    readFrom;
     uint    readTo;
+    bool     doWrite;
+    bool    doCheck;
     //const char *flgs[] ;
     vector<string> flags;
     float mafThresh     ;
     int   debugMode;
+    bool  loadLD;
     /// to be implemented
     //  double dupThresh ;  the thresh of LD r^2 between two SNPs to be considered duplicates.
     //  int nIterations; the number interations to be performed. At least one.
@@ -55,6 +59,19 @@ public:
         }
         ifile.close();
     };
+
+    static inline int FileExist2(string filename)
+    {
+        ifstream ifile(filename.c_str());
+        if(!ifile)
+        {
+            return -1;
+        }
+        return 0;
+    };
+
+
+
 
 
 
@@ -91,6 +108,10 @@ public:
         flags.push_back("--gwas-summary"); //summmaryFile
         bfileName     = "";
         flags.push_back("--bfile");  // bed file
+
+        bldLDFile = "";
+        flags.push_back("--bld");  // bed file
+
         outPrefix     = "out";  // default output prefix
         flags.push_back("--out");
         thread_num    = 1;      // number of threads for QC
@@ -99,7 +120,7 @@ public:
         // flags.push_back("--degree-of-QC");
         lambda        = 0.1;    // the lambda for Ridge regression 
         // flags.push_back("--lambda");
-        maxDim        = 25000;   // default max window size for imputation
+        maxDim        = 30000;   // default max window size for imputation
         // flags.push_back("--min-wind");
         mafThresh     = -1;   // default -1 for no restrictions on maf.
         flags.push_back("--maf");
@@ -109,7 +130,7 @@ public:
         flags.push_back("--target");
         withNA = 0;
         flags.push_back("--with-NA-geno");
-        maxDist = -1;
+        maxDist = 2000000;           // 2Mb by default
         flags.push_back("--wind-dist");
         minDim        = 2000;   // default min window size for imputation
         flags.push_back("--wind");
@@ -118,12 +139,20 @@ public:
         ignoreWarnings = false;
         flags.push_back("--ignore-warnings");
 
+        loadLD = false;
+        flags.push_back("--load-LD");
+
+
         ignoreWarnings = false;
 
-        bldLDFile ="";
         readFrom = 0;
         readTo   = 0;
-        flags.push_back("--read-LD");
+        doWrite       = false;
+        doCheck       = false;
+
+        flags.push_back("--bld");
+        flags.push_back("--check-LD");
+        flags.push_back("--write-LD");
 
 
 
@@ -173,25 +202,43 @@ void Options::parseOptions(int nArgs, char* option_str[])
     FLAGS_VALID_CK(nArgs, option_str);
     for(int i = 0; i < nArgs; i ++)
     {
-        if(strcmp(option_str[i],"--read-LD")==0)
+        if(strcmp(option_str[i], "--load-LD") == 0)
+        {
+            loadLD = true;
+            if(i+1 < nArgs)
+                Options::bool_FLAG_VALID_CK(string("--load-LD"), option_str[i+1]);
+            cout<< option_str[i] << " " <<  " TRUE" <<endl;
+        }
+
+        if(strcmp(option_str[i], "--bld") == 0)
         {
             bldLDFile = option_str[++i];
-            Options::FLAG_VALID_CK(string("--read-LD"), bldLDFile.c_str());
+            Options::FLAG_VALID_CK(string("--bld"), bldLDFile.c_str());
             cout<< option_str[i-1] << " " <<  bldLDFile <<endl;
+            FileExist(bldLDFile + ".bld");
+        }
+
+        if(strcmp(option_str[i],"--check-LD")==0)
+        {
+            this->doCheck = true;
             readFrom  = atoi(option_str[++i]);
             readTo    = atoi(option_str[++i]);
-            cout << "\t" << " from ith SNP " << readFrom << " to jth SNP "
-                    << readTo << endl;
+            //cout << option_str[i-2] << "\t" << " from ith SNP " << readFrom << " to jth SNP "
+            //        << readTo << endl;
+            printf("%s\t from %d-th SNP to %d-th SNP.\n", option_str[i-2], readFrom, readTo);
             if(readTo - readFrom < 1) 
-            {
-                fprintf (stderr, "Error: the dimention of matrix < 1 \n");
-                exit (EXIT_FAILURE);
-            }
+                stop( "Error: the dimention of matrix < 1 \n");
             FileExist(bldLDFile + ".bld");
-            FileExist(bldLDFile + ".ridx");
-
-            return ;
         }
+        if(strcmp(option_str[i],"--write-LD")==0)
+        {
+            this->doWrite  = true;
+            if(i+1 < nArgs)
+                Options::bool_FLAG_VALID_CK(string("--with-LD"), option_str[i+1]);
+            cout<< option_str[i] << " " <<  " TRUE" <<endl;
+        }
+
+
 
         if(strcmp(option_str[i],"--gwas-summary")==0)
         {
@@ -309,6 +356,7 @@ void Options::parseOptions(int nArgs, char* option_str[])
             }
             cout<< option_str[i] << " " <<  " TRUE" <<endl;
         }
+
 
 
 

@@ -9,6 +9,18 @@ using namespace std;
 #include "headers.h"
 
 
+void stop( const char *fmt, ...) 
+{
+    va_list args;
+    va_start(args, fmt);
+    vprintf (fmt, args);
+    va_end(args);
+    exit(-1);
+}
+//void stop(char* msg)
+//{
+//}
+
 void to_upper(string &str)
 {
     for(int i=0; i<str.size(); i++){
