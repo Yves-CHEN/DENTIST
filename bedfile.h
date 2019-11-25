@@ -170,14 +170,8 @@ BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
     this->maf = calcMaf (bfileName, N, M, ncpus);
 
     for (uint i = 0; i < this->maf.size(); i ++)
-    {
         if( (this->maf[i] <= 0.5 && this->maf[i] > minMaf) ||  (this->maf[i] > 0.5 && 1- this->maf[i] > minMaf)  )
-        {
             this->include.push_back(i);
-        }
-
-    }
-
 
 
 }
@@ -351,7 +345,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
                 sum_i    += countOnes[GENO_i [k] & marker];
             }
             E_i         = double(sum_i  ) / (nKeptSample - nMissing);
-            maf[startingIdx[block_i] + i] = E_i / 2;
+            maf[startingIdx[block_i] + i] = 1- E_i / 2;
         }
 
 
@@ -362,11 +356,6 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     }
 
     return maf;
-
-
-
-
-
 
 };
 

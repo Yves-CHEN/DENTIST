@@ -50,12 +50,12 @@ void findRight(const int* bp, int dim, vector<int>& right, int wind)
 template<class T>
 void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int ncpus)
 {
-    uint extendBy =  LDwinSize / 5;//slighly extended LDwind which ease the saving of LD
-    int cutoff =  LDwinSize + extendBy;
+    uint extendBy     = LDwinSize / 5;//slighly extended LDwind which ease the saving of LD
+    int cutoff          = LDwinSize + extendBy;
     string outPrefix (outFilePrefix);
     string rightIdxFile = outPrefix + ".ridx";
     string bldFile      = outPrefix + ".bld";
-    FILE*  bldWriter   = fopen(bldFile.c_str(), "w");
+    FILE*  bldWriter    = fopen(bldFile.c_str(), "bw");
     ofstream  idxfile2 (rightIdxFile.c_str());
     const uint maxDim = 200000;
     // read bedfile

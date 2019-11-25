@@ -169,7 +169,11 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
        _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx,
                 &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
 
-  
+    //for (uint i =0; i < arrSize; i ++)
+    //    for (uint j =0; j < arrSize; j ++)
+    //        result[ i *arrSize +j ]  = int(result[ i *arrSize +j ]  * 1e5) * 1.0 /1e5;
+    //
+    //
     /// LDType* tmpLD = new LDType[arrSize * arrSize]();
     /// _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx,
     ///             &arrSize, toAvert, &cutoff,  &ncpus, tmpLD, &jump, &withNA);
@@ -184,7 +188,7 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     ///     {
     ///     double tmpDiff = fabs(result[i*arrSize + j] - tmpLD[i*arrSize + j]);
 
-    ///         if( tmpDiff > 0.001)
+    ///         if( tmpDiff > largestDiff)
     ///         {
     ///             largestDiff = tmpDiff;
     ///             whichi = i;
@@ -192,7 +196,6 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     ///             found = true;
     ///             break;
     ///         }
-
     ///     }
     /// }
     /// cout << rsIDs[whichi] << endl;

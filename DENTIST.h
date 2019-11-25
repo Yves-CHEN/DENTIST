@@ -24,15 +24,19 @@ using namespace std;
 //#void runQCForEQTL(string bfile, SMRWK& smrwk, map<string,long>& seqNoMap, int thread_num, SMRWK& smrwk_tmp, double Degree_QC);
 
 
+
+
+
+
 class GWAS
 {
 public:
+    vector<string> rs;
     vector<string> A1;
     vector<string> A2;
     vector<double> b;
     vector<double> se;
     vector<double> zscore;
-    vector<string> rs;
     vector<double> maf;
     vector<int>    _include;
     vector<int>    splSize;
@@ -101,6 +105,7 @@ GWAS::GWAS (string summmaryFile, bool ifGZ)
                 printf("ERROR: the SNP name is \'NA\' in row %d.\n", lineNum+2);
                 exit(EXIT_FAILURE);
             }
+
             this->rs.push_back(vs_buf[0]);
             if(vs_buf[1]=="NA" || vs_buf[1]=="na"){
                 printf("ERROR: allele1 is \'NA\' in row %d.\n", lineNum+2);
@@ -260,7 +265,72 @@ GWAS::GWAS (string summmaryFile, bool ifGZ)
 ///     gwasFile.close();
 /// };
 
+map<string, double> createMap(const vector<string>& rsID, const vector<double>& maf, const vector<string>& A1, const vector<string>& A2)
+{
 
+    map<string, double> mm;
+    for(uint i =0; i< rsID.size(); i ++)
+    {
+        string key = "";
+        double ff = maf[i];
+        if(A1[i].compare(A2[i]) > 0)
+            key = rsID[i] + A1[i] + A2[i];
+        else
+        {
+            key = rsID[i] + A2[i] + A1[i];
+            ff = 1 -ff;
+        }
+
+        if(mm.find(key) == mm.end())
+            mm [key]   = ff;
+        else
+            stop("[error] duplicated key [%s]. \n", key);
+    }
+    return mm;
+}
+
+void deltaMAF(GWAS&   gwas, BedFile& ref)
+{
+    auto m1 = createMap (gwas.rs, gwas.maf, gwas.A1, gwas.A2);
+    auto m2 = createMap (ref.rs, ref.maf, ref.A1, ref.A2);
+
+    float threshold = 0.1;
+    vector<uint> updatedInclude;
+
+    int before = 0;
+    for (uint kk =0; kk < ref.include.size(); kk ++)
+    {
+        uint  i = ref.include[kk];
+        string key = "";
+        if(ref.A1[i].compare(ref.A2[i]) > 0)
+            key = ref.rs[i] + ref.A1[i] + ref.A2[i];
+        else
+            key = ref.rs[i] + ref.A2[i] + ref.A1[i];
+        if(m1.find(key) != m1.end() && m2.find(key) != m2.end()    ) before ++;
+    }
+
+
+    for (uint kk =0; kk < ref.include.size(); kk ++)
+    {
+        uint  i = ref.include[kk];
+        string key = "";
+        if(ref.A1[i].compare(ref.A2[i]) > 0)
+            key = ref.rs[i] + ref.A1[i] + ref.A2[i];
+        else
+            key = ref.rs[i] + ref.A2[i] + ref.A1[i];
+
+        if(m1.find(key) != m1.end() && m2.find(key) != m2.end()   
+                && fabs(m1[key] - m2[key]) < threshold)
+        {
+            updatedInclude.push_back(i);
+        }
+    }
+    ref.include = updatedInclude;
+    printf("[info] %d (%.1f%%) SNPs were filtered when applying deltaMaf %f. \n",  before - ref.include.size(),  (before - ref.include.size() ) * 1.0 * 100/ before, threshold);
+
+
+
+}
 
 
 
@@ -674,6 +744,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
     for (long int i =0 ; i < gtab.size(); i ++)
         id_map [ gtab.rs[i] ] = i;
     //for (long int j =0 ; j < btab.rs.size(); j ++)
+    int sum = 0;
     for (long int k =0 ; k < btab.include.size(); k ++)
     {
         uint j = btab.include[k];
@@ -690,6 +761,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
                 bp.push_back(btab.bp[j]);
                 toFlip.push_back(false);
                 //alignToWhich[i] = btab.seqNo[j];
+            sum ++;
             }
             else if(gtab.A1[i] == btab.A2[j] && gtab.A2[i] == btab.A1[j]  )
             {
@@ -700,10 +772,11 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
                 toFlip.push_back(true);
                 //alignToWhich[i] = btab.seqNo[j];
                 //haveFliped[i] = true;
+            sum ++;
             } 
         }
     }
-    printf("[info]%d SNPs (rsID) were shared between the summary and reference data. \n", rsID.size());
+    printf("[info] %d SNPs (rsID) were shared between the summary and reference data. \n", sum);
 
 
 
@@ -731,6 +804,7 @@ void runQC(const Options& opt)
     // read bedfile
     BedFile  ref (bfileName, opt.mafThresh, opt.thread_num);
 
+    
     if(opt.targetSNP != "")
     {
         D(cout << "Extracting SNPs at the target SNP : " << opt.targetSNP << endl;);
@@ -802,6 +876,8 @@ void runQC(const Options& opt)
     vector<uint> bp;
     alignGWAS (gwasDat, ref,   zScore,  seqNo,  toFlip, rsID, bp);
 
+
+    deltaMAF  (gwasDat, ref);
     
 
     if(opt.maxDist != -1) {
