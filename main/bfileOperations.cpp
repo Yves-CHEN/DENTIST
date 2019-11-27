@@ -424,7 +424,7 @@ int calcLDFromBfile (std::string bedFile, uint nSample, long nMarker, uint* theM
 
     dataType** GENO = new dataType* [sizeOfMarkIdx] ;
  #pragma omp parallel for
-    for (unsigned int i = 0; i < sizeOfMarkIdx; i ++)
+    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
     {
         GENO[i] = (dataType*) (perMakerSizeOrig * (theMarkIdx[i] - theMarkIdx[0]) + bufferAllMarkers);
     }
@@ -435,14 +435,14 @@ int calcLDFromBfile (std::string bedFile, uint nSample, long nMarker, uint* theM
     std::cout << "jump" << *jump << std::endl;
 
  #pragma omp parallel for
-    for (unsigned int i = 0; i < sizeOfMarkIdx; i ++)
+    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
     {
         dataType* GENO_i = GENO[i] ;
 
 
         int starting = (*jump) > (i+1)? (*jump): (i +1);
         //for (unsigned int j =i+1; j< sizeOfMarkIdx; j ++)
-        for (unsigned int j = starting; j< sizeOfMarkIdx; j ++)
+        for (unsigned long long j = starting; j< sizeOfMarkIdx; j ++)
         {
             int sign = 1;
             if(toAvert[i] != toAvert[j]) 
@@ -465,7 +465,7 @@ int calcLDFromBfile (std::string bedFile, uint nSample, long nMarker, uint* theM
             dataType* GENO_j = GENO[j] ;
 
             if (j > i + cutoff)  break;
-            for (unsigned int k =0; k < perMakerSize; k ++)
+            for (unsigned long long k =0; k < perMakerSize; k ++)
             {
 
                 marker = markMissing[ GENO_i[k]  ]  & markMissing[GENO_j[k]]   ;
@@ -555,16 +555,22 @@ int calcLDFromBfile (std::string bedFile, uint nSample, long nMarker, uint* theM
 
 
 // ***********************************************************
-// Caveats: 
+//              
+//    The   typedef  dataType short
+//          or typedef  dataType uchar determines the processing of data
+//          in one byte or two byte at one time
+//    The template <class T> sets the LD return in which datatype, T.
+//
+/// Caveats: 
 //    a) For speed, the function uses the number of sample dividable by
 //        4 (when dateType is uchar) or 8 (when dataType is short).
 //        e.g.   when nSample = 3642, 
 //                the nKeptSample = int(nSample / 4.0) *4  = 3640
-//              
+//
 // ***********************************************************
 
 template <class T>
-int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, long sizeOfMarkIdx, uint* toAvert, int cutoff, int* ncpus, T* result, int* jump)
+int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, unsigned long long sizeOfMarkIdx, uint* toAvert, int cutoff, int* ncpus, T* result, int* jump)
 {
     // **************************************************************
     ///                    set timer
@@ -575,8 +581,6 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     // **************************************************************
     ///                    set number of cpus
     // **************************************************************
-    //int nProcessors = omp_get_max_threads();
-    //if(*ncpus < nProcessors) nProcessors = *ncpus;
     int nProcessors = *ncpus;
     omp_set_num_threads( nProcessors );
     D(printf("[info] Calc LD  based on %d cpus \n", nProcessors););
@@ -584,8 +588,8 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     //                     Variables
     // **************************************************************
     uint processSamplePerRound = sizeof(dataType)*8 /2;
-    //uint perMakerSize = ceil ( (nSample) / 1.0 / processSamplePerRound );
-    uint perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
+    const int individualsPerByte = 4;
+    uint perMakerSizeOrig = ceil ( (nSample) / 1.0 / individualsPerByte );
     uint perMakerSize = uint( (nSample) / 1.0 / processSamplePerRound );
     uint nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
     long lSize =0;
@@ -597,7 +601,6 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     int nThrowAway = 0;
     uchar  headerBuf[nByteHeader ] ;
     uint nKeptSample = perMakerSize * processSamplePerRound;
-    //// std::vector<std::vector<dataType> > GENO_old      (sizeOfMarkIdx, std::vector<dataType> ( nSample, 0) );
     std::vector<double>         GENO_VAR (sizeOfMarkIdx, -1 );
     std::vector<double>         GENO_Ex  (sizeOfMarkIdx, -1 );
     std::vector<double>         GENO_sum11  (sizeOfMarkIdx, -1 ); // sum of sample with genotype 11
@@ -627,24 +630,23 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     };
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
     {
-        printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n", lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
+        printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n",
+                lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
     }
     ////////////////////////////////////////////////////
     /// Creating map for a bype.
     /// number of ones,  00 coded for 0 in  a additive model, 11 for 2, 10 or 01 for 1
     /// This step assumes no missingness. (10 for missing.)
     ///    mapper : 65536 = 2 ^ (2*8 bits)
+    /// invCountOnes is a "function (aa)  aa = ~aa; bitset<8> (aa).count"
+    /// mapper2      is a "function (aa) aa = ~aa; aa & (aa<<1) & 0xaa" 
+    /// mapper3      is a "function (aa)  aa & (aa<<1) & 0xaa" 
+    /// countOnes    is a "function (aa)  bitset<8> (aa).count"
     size_t const sizeOfMap = (size_t) (pow( 2 , (sizeof(dataType) * 8) ));
-    // invCountOnes is a "function (aa)  aa = ~aa; bitset<8> (aa).count"
-    // mapper2   is a "function (aa) aa = ~aa; aa & (aa<<1) & 0xaa" 
-    // mapper3   is a "function (aa)  aa & (aa<<1) & 0xaa" 
-    // countOnes is a "function (aa)  bitset<8> (aa).count"
-    // mapper5   is a "function (aa)  aa = ~aa ; ( ((aa ^ aa <<1) & 0xaa ) >>1 ) *3"
-    uint      invCountOnes  [sizeOfMap ] = {0};
-    uint      mapper2[sizeOfMap ]        = {0}; 
-    uint      mapper3[sizeOfMap ]        = {0}; 
-    uint      countOnes[sizeOfMap ]      = {0}; 
-    //dataType  mapper5[sizeOfMap ]        = {0}; 
+    uint      invCountOnes  [sizeOfMap ]     = {0};
+    uint      mapper2[sizeOfMap ]            = {0}; 
+    uint      mapper3[sizeOfMap ]            = {0}; 
+    uint      countOnes[sizeOfMap ]          = {0}; 
     dataType  markMissing[sizeOfMap ]        = {0}; 
 #pragma omp parallel for 
     for (unsigned int i = 0; i < sizeOfMap ; i ++)
@@ -666,20 +668,17 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     ///     1. Calculating the var(SNP_i), E(SNP_i), E(SNP_i^2)
     //      2. Avert the genotype if specified.
     // ******************************************************
-    unsigned long loadSize = perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
+    unsigned long long loadSize = perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
     uchar* bufferAllMarkers = new uchar [loadSize ];
 
     D(printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6)););
-    printf("\t[info] LD matrix size is %d Mb. \n", int(sizeOfMarkIdx * 1.0 * sizeOfMarkIdx/1e6 * 8)); 
+    printf("[info] LD matrix size is %d Mb. \n", int(sizeOfMarkIdx * 1.0 * sizeOfMarkIdx/1e6 * 8)); 
     D(printf("[info] Map size is %d Mb. \n", int(sizeOfMap * 1.0 * sizeof(uint)* 4 + sizeOfMap * 1.0 * sizeof(dataType) * 1)););
     
-    std::cout <<  loadSize << ", "<<  perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway << std::endl;
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     fread (bufferAllMarkers, 1, loadSize, bedFileReader);
     dataType* bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
-    
     clock_gettime(CLOCK_MONOTONIC, &start);
-    
     
     // *****************************************************************
     //
@@ -697,9 +696,9 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
 
     dataType** GENO = new dataType* [sizeOfMarkIdx] ;
 #pragma omp parallel for
-    for (unsigned int i = 0; i < sizeOfMarkIdx; i ++)
+    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
     {
-        GENO[i] = (dataType*) (perMakerSizeOrig * (theMarkIdx[i] - theMarkIdx[0]) + bufferAllMarkers);
+        GENO[i] = (dataType*) (perMakerSizeOrig * (long long)(theMarkIdx[i] - theMarkIdx[0]) + bufferAllMarkers);
     }
 
 
@@ -707,37 +706,33 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
     std::vector<double>  E_sq (sizeOfMarkIdx);
     std::vector<double>  sum11 (sizeOfMarkIdx);
     std::vector<double>  VAR(sizeOfMarkIdx);
- #pragma omp parallel for
-    for (unsigned int i = 0; i < sizeOfMarkIdx; i ++)
-    {
-       //dataType* GENO_i = GENO[i] ;
-       double sum_i     = 0;
-       double sum11_i   = 0;
-       for (unsigned int k =0; k < perMakerSize; k ++) {
-           sum_i    += countOnes[GENO[i][k]];
-           sum11_i  += mapper2[(dataType)(GENO[i][k])];
+#pragma omp parallel for
+   for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
+   {
+      double sum_i     = 0;
+      double sum11_i   = 0;
+      for (unsigned long long k =0; k < perMakerSize; k ++) {
+          sum_i    += countOnes[GENO[i][k]];
+          sum11_i  += mapper2[(dataType)(GENO[i][k])];
 
-       }
-       sum11 [i] = sum11_i;
-       E     [i] = double(sum_i  ) / (nKeptSample);
-       E_sq  [i] = double(sum_i   + sum11_i*2 )/ (nKeptSample);
-       VAR   [i] =  E_sq[i] - E[i] * E[i] ;
-    }
+      }
+      sum11 [i] = sum11_i;
+      E     [i] = double(sum_i  ) / (nKeptSample);
+      E_sq  [i] = double(sum_i   + sum11_i*2 )/ (nKeptSample);
+      VAR   [i] =  E_sq[i] - E[i] * E[i] ;
+   }
 
 
     D(std::cout << "jump" << *jump << std::endl;);
 
 
-
 #pragma omp parallel for
-     for (unsigned int i = 0; i < sizeOfMarkIdx; i ++)
+     for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
      {
          dataType* GENO_i = GENO[i] ;
-         int starting = (*jump) > (i+1)? (*jump): (i +1);
-         //for (unsigned int j =i+1; j< sizeOfMarkIdx; j ++)
-         for (unsigned int j = starting; j< sizeOfMarkIdx; j ++)
+         unsigned long long starting = (*jump) > (i+1)? (*jump): (i +1);
+         for (unsigned long long j = starting; j< sizeOfMarkIdx; j ++)
          {
-
              long double   sum_XY = 0;
              double   sum_0011 = 0; // 00 OR 11
              dataType* GENO_j = GENO[j] ;
@@ -745,17 +740,14 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
              if(toAvert[i] != toAvert[j]) 
                  sign = -1;
              if (j > i + cutoff)  break;
-             for (unsigned int k =0; k < perMakerSize; k ++)
+             for (unsigned long long k =0; k < perMakerSize; k ++)
              {
                  sum_XY   +=  countOnes  [ (dataType) (GENO_i[k]  & GENO_j[k]) ];
                  sum_0011 +=  mapper3[ (dataType) (GENO_i[k]  ^ GENO_j[k])     ];
              }
-
-
              sum_XY += sum11[i] + sum11[j] - sum_0011;
              double cov_XY = sum_XY / (nKeptSample ) - E[i] * E[j];
              double LD = 0;
-
              if(!(VAR[i] == 0 || VAR[j] == 0))
                  LD = cov_XY / sqrt ( (VAR[i] * VAR[j]) ) * sign;
              else
@@ -770,7 +762,6 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
              if(sizeof(*result) == 1) // char
              {
                  char aa =  char(LD*250);
-                 printf("(%f, %f)\n",LD, (0L |255 & aa)/250.0  );
                  result[sizeOfMarkIdx * i + j] = char(LD * 250);
                  result[sizeOfMarkIdx * j + i] = char(LD * 250);
              }
@@ -789,24 +780,22 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, uint nSample, long n
                  result[sizeOfMarkIdx * i + j] = LD ;
                  result[sizeOfMarkIdx * j + i] = LD ;
              }
-
-
          }
      }
 
 
 
 #pragma omp parallel for                                       
-    for (unsigned int i = 0; i < sizeOfMarkIdx; i ++)          
+    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
     {                                                          
-         if(sizeof(*result) == 1) // char
-             result[sizeOfMarkIdx * i + i] = char(1 * 250);
-         else if(sizeof(*result) == 2) // short
-             result[sizeOfMarkIdx * i + i] = short(10000); 
+        if(sizeof(*result) == 1) // char
+            result[sizeOfMarkIdx * i + i] = char(1 * 250);
+        else if(sizeof(*result) == 2) // short
+            result[sizeOfMarkIdx * i + i] = short(10000); 
          else if (std::is_same<T, int>::value) // int
-             result[sizeOfMarkIdx * i + i] = short(1000000); 
-         else
-             result[sizeOfMarkIdx * i + i] = 1; 
+            result[sizeOfMarkIdx * i + i] = T(1000000); 
+        else
+            result[sizeOfMarkIdx * i + i] = 1; 
     }                                            
   
 

@@ -2,6 +2,8 @@
 #define __INVOKER__
 
 #include "headers.h"
+#include <options.h> 
+
 //#include <template>
 using namespace std;
 typedef unsigned int uint;
@@ -12,59 +14,11 @@ template<class T>  int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nS
 /// 
 /// 
 template<class T> void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double* lambda, int* interested, int* ncpus);
-/// 
-//
-// int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx,
-//         uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,double* result, int* jump, int* withNA);
+        double* imputedZ, double* rsq, double* zScore_e, double pValueThresh,  int* interested, int* ncpus);
 
 
 
-// extern void DENTIST(double* LDmat, uint* size, double* zScore, double* imputedZ, double* rsq, double* zScore_e,  double* lambda, int* interested, int* ncpus);
 
-// extern void DENTIST(double* LDmat, uint* size, uint* nSample, double* zScore, double* imputedZ, double* rsq, double* zScore_e,  double* lambda, int* interested, int* ncpus);
-//
-//
-// extern void  DENTIST(double*, unsigned int*, double*, double*, double*, double*, double*, int*, int*);
-
-
-void  regularizeLD (double* LDmat, int markerSize)
-{   
-    Eigen::MatrixXd VV (markerSize,  markerSize );
-
-
-    for (uint i = 0; i < markerSize; i ++)
-      for (uint j = 0; j < markerSize; j ++)
-          VV(i,j) =   LDmat[i * (markerSize) + j];
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(VV);
-    int nRank = es.eigenvectors().rows();
-    // int nRank = es.rank();
-    Eigen::MatrixXd  wi = Eigen::MatrixXd::Identity(nRank, nRank);
-    int nZeros = 0;
-    for (int j=0; j<nRank; j++) 
-    {
-        wi(j,j) = es.eigenvalues()(j);
-        if ( es.eigenvalues()(j) < 0.0001)
-        {
-            nZeros ++;
-        }
-    }
-    nRank = nRank - nZeros;
-
-
-  
-    for (int j=0; j< int(nRank * 3/4); j++) 
-        wi(j,j) = 0;
-
-    Eigen::MatrixXd ui = es.eigenvectors();
-    Eigen::MatrixXd aa = ui * wi * ui.transpose();
-    for (uint i = 0; i < markerSize; i ++)
-      for (uint j = 0; j < markerSize; j ++)
-      {
-             LDmat[i * (markerSize) + j] = aa(i,j) ;
-             if(i == j )  LDmat[i * (markerSize) + j]  = 1.0001;
-      }
-}
 
 // void generateData (uint theMarkIdx[], uint toAvert[], double zScores[], uint M)
 // {
@@ -130,10 +84,9 @@ void findDup2(double* r,  double rThreshold, vector<int>& dupBearer, vector<int>
 
 
 
-//void testMethods(string bedFile,vector<string> rsIDs, vector<string> A1,  vector<long> seqNos, vector<double> the_zScores, uint nMarkers, uint nSamples, int cutoff,double lambda, string outFileName , int ncpus, vector<int>& toKeep, double Degree_QC)
 void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, vector<int>& toAvert_Null, vector<double>& the_zScores, uint nMarkers, uint nSamples, 
-        int cutoff, double lambda, string outFileName, int ncpus, vector<int>& toKeep, double Degree_QC, 
-        vector<double>& imputedZ, vector<double>& rsq, vector<double>& zScore_e, vector<bool>& ifDup, int thePos, int startIdx, int endIdx, LDType* result, uint nKept, int withNA, bool preCalculated)
+        int cutoff,  string outFileName, int ncpus, vector<int>& toKeep,  
+        vector<double>& imputedZ, vector<double>& rsq, vector<double>& zScore_e, vector<bool>& ifDup, int thePos, int startIdx, int endIdx, LDType* result, uint nKept, const Options& opt, bool preCalculated)
 {
 
     char bedFileCstr[1000] = "";
@@ -153,6 +106,7 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
 
 
     int jump = nKept ;
+    int withNA = opt.withNA;
     //int jump = 0;
     //_LDFromBfile (&head, &nMarkers, &nSamples, theMarkIdx, &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
     
@@ -223,7 +177,8 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     //double rThreshold = 0.95;
     // double rThreshold = 0.97;
     //double rThreshold = 0.99;
-    double rThreshold = 0.995;
+    //double rThreshold = 0.995;
+    double rThreshold = round(sqrt(opt.dupThresh ) * 1000 )/1000.0;
     vector<int> dupBearer( arrSize, -1);
     vector<double> corABS( arrSize, -1);
     vector<int> sign( arrSize, 1);
@@ -263,8 +218,7 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
         }
     }
     
-    // DENTIST ( resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp, imputedZ_tmp, rsq_tmp, zScore_e_tmp,  &lambda, &interested, &ncpus);
-    DENTIST<LDType> ( resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp, imputedZ_tmp, rsq_tmp, zScore_e_tmp,  &lambda, &interested, &ncpus);
+    DENTIST<LDType> ( resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp, imputedZ_tmp, rsq_tmp, zScore_e_tmp, opt.pValueThreshold,   &interested, &ncpus);
 
     count =0;
     vector<double> imputedZ_tmp_unfold(dupBearer.size(),-1);

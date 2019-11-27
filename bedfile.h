@@ -287,7 +287,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
 
 
 
-    uint maxBlockSize = 80000000;  // 80M
+    const uint maxBlockSize = 80000000;  // 80M
     vector <uint> startingIdx; 
     vector <uint> readLen; 
     assert(maxBlockSize>nSample *2);

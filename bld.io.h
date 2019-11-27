@@ -57,7 +57,7 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
     string bldFile      = outPrefix + ".bld";
     FILE*  bldWriter    = fopen(bldFile.c_str(), "bw");
     ofstream  idxfile2 (rightIdxFile.c_str());
-    const uint maxDim = 200000;
+    const     uint maxDim = 200000;
     // read bedfile
     BedFile  ref (bedfileName);
     string bedFile = bedfileName + ".bed";
@@ -76,18 +76,6 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
     reserved[4]  = sizeof(T); // number bytes
     for(int i = 5; i < RESERVEDUNITS; i ++) reserved[i]=-9;
     fwrite(&reserved[0],sizeof(int), RESERVEDUNITS, bldWriter);
-
-    //bldWriter + RESERVEDUNITS
-
-    //ofstream  idxfile (rightIdxFile.c_str());
-    //for (int i =0; i < bp.size(); i ++)
-    //    idxfile << ref.rs[i] << "\t"
-    //            << ref.bp[i] << "\t"
-    //            << ref.A1[i] << "\t"
-    //            << ref.A2[i] << "\t"
-    //            << ref.maf[i] << "\t"
-    //            << nextIdx[i] << "\n";
-    //idxfile.close();
 
     T* LD = new T[ maxDim *  maxDim ]();
     int    jump  = 0;
@@ -207,46 +195,46 @@ int writeLD2File_wind(FILE* outfile, ofstream& idxfile, T LD[], int dim, int* bp
 
 
 
-// assume LD (r) is needed.
-// assume per-chr calculation
-// assume bed is ordered by bp
-template  <class T>
-void writeLD2File(T LD[], int dim, const int*  bp,  int ldWind, string outFileName)
-{
-    
-    string bldname      = string(outFileName)+".bld";
-    string rightIdxFile = string(outFileName)+".ridx";
-    FILE*  outfile     = fopen(bldname.c_str(), "w");
-    ofstream  idxfile (rightIdxFile.c_str());
-    vector<int> reserved(RESERVEDUNITS);
-    int sampleSize = 1000;
-    reserved[1] = sampleSize;
-    reserved[2] = dim;
-    reserved[3] = ldWind;
-    reserved[0] = 0;
-    /// Need to save the LDType as well?
-    for(int i = 4; i < RESERVEDUNITS; i ++) reserved[i]=-9;
-    ///fwrite(&reserved[0],sizeof(int), RESERVEDUNITS, outfile);
-    vector<int> right(dim, 0);
-    findRight(bp, dim,right, ldWind);
-    for (int i =0; i < dim; i ++)
-        idxfile << right[i] << "\n";
-
-    // if(sizeof(LDType ) == 2)
-    // {
-    //     // convert LD
-    // }
-
-    for(int i = 0; i < dim-1;i ++)
-    {
-        int j = right[i];
-        fwrite(LD + i*dim+i +1, sizeof(LDType), j -i -1 ,  outfile);  
-    }
-    fclose(outfile);
-    idxfile.close();
-    printf("LD information is saved in the binary file %s.\n",bldname.c_str());
-}
-
+/// // assume LD (r) is needed.
+/// // assume per-chr calculation
+/// // assume bed is ordered by bp
+/// template  <class T>
+/// void writeLD2File(T LD[], int dim, const int*  bp,  int ldWind, string outFileName)
+/// {
+///     
+///     string bldname      = string(outFileName)+".bld";
+///     string rightIdxFile = string(outFileName)+".ridx";
+///     FILE*  outfile     = fopen(bldname.c_str(), "w");
+///     ofstream  idxfile (rightIdxFile.c_str());
+///     vector<int> reserved(RESERVEDUNITS);
+///     int sampleSize = 1000;
+///     reserved[1] = sampleSize;
+///     reserved[2] = dim;
+///     reserved[3] = ldWind;
+///     reserved[0] = 0;
+///     /// Need to save the LDType as well?
+///     for(int i = 4; i < RESERVEDUNITS; i ++) reserved[i]=-9;
+///     ///fwrite(&reserved[0],sizeof(int), RESERVEDUNITS, outfile);
+///     vector<int> right(dim, 0);
+///     findRight(bp, dim,right, ldWind);
+///     for (int i =0; i < dim; i ++)
+///         idxfile << right[i] << "\n";
+/// 
+///     // if(sizeof(LDType ) == 2)
+///     // {
+///     //     // convert LD
+///     // }
+/// 
+///     for(int i = 0; i < dim-1;i ++)
+///     {
+///         int j = right[i];
+///         fwrite(LD + i*dim+i +1, sizeof(LDType), j -i -1 ,  outfile);  
+///     }
+///     fclose(outfile);
+///     idxfile.close();
+///     printf("LD information is saved in the binary file %s.\n",bldname.c_str());
+/// }
+/// 
 // another function to load indexing and dim first
 //  int   readIdxFile (string bldFile) : return dim and indexing
 
@@ -452,12 +440,10 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
 
     if(sizeof(T) == SaveInNumByte)
     {
-        cout << "tt" << endl;
-         LD_typeT = (T*)LD_untyped;
+        LD_typeT = (T*)LD_untyped;
     }
     else
     {
-        cout << "tt2" << endl;
         T* LD_typeT = new T[dim * dim](); /// new and set zeros
         if(SaveInNumByte ==2) // saved in short, but expecting float or double
         {
@@ -510,110 +496,6 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
 }
 
 
-
-
-// 1. check what window size was used?
-// 2. window size for loading
-// 3. loading LD for which markers
-// 4. change the signs of correlation specified by toAvert
-LDType * readLDFromFile(string outFilePrefix, int& dim)
-{
-    string rightIdxFile = string(outFilePrefix)+".ridx";
-    string bldname      = string(outFilePrefix)+".bld";
-    FILE*  datFile      = fopen(bldname.c_str(), "r");
-    ifstream  idxfile (rightIdxFile.c_str());
-    // load the right most element Idx. 
-    vector<int> right;
-    if (idxfile.is_open()) 
-    {
-        int ridx =0; 
-        while (idxfile >> ridx) 
-            right.push_back(ridx);
-        dim = right.size();
-    }
-    else
-        cout << "Unable to open file [" << rightIdxFile << "]"   <<endl;
-    
-
-    int const tmpReadBufferSize = 100000;
-    LDType buffer [tmpReadBufferSize];
-    cout << "buffer size: " 
-        << tmpReadBufferSize * sizeof(LDType)*1.0 /1e6 << " Mb" << endl;
-    LDType* LD = new LDType[dim * dim](); /// new and set zeros
-    for(int i = 0; i < dim-1;i ++)
-    {
-        fread(buffer, sizeof(LDType), right[i] -i -1 ,datFile);  
-        for (int j = i+1; j <  right [i] ; j ++) 
-        {
-            LD[i*dim  + j] = buffer [j - (i+1)];
-        }
-    }
-    fclose(datFile);
-    idxfile.close();
-    return LD;
-
-}
-
-
-void test1()
-{
-    uint nMarkers = 27664;
-    uint nSamples = 8652;
-    uint arrSize  = 1000;
-    uint theMarkIdx [10000]    = {};
-    uint     toAvert[10000]    = {};
-
-    int cutoff = 1000;
-    int ncpus  = 4;
-    int jump = 0;
-    int withNA = 0;
-    double *  LD =  new double[arrSize *arrSize]();
-    string bedfilePrefix = 
-        "/home/uqwche11/30days/simulation.UK10K/Data/hrs.hm2/hrs_hm2_chr22";
-
-    char bedFileCstr[1000] = "";
-    std::strcpy ( bedFileCstr, (bedfilePrefix + ".bed").c_str());
-    BedFile  refBedFile (bedfilePrefix);
-    cout << "Bim file : " << refBedFile.bp.size() << endl;
-    char* head =  bedFileCstr;
-    for(uint i =0; i < arrSize ; i ++)
-        theMarkIdx[i] = i;
-
-    _LDFromBfile<double> (&head, &nMarkers, &nSamples, &theMarkIdx[0],
-        &arrSize, &toAvert[0], &cutoff, &ncpus, LD, &jump, &withNA);
-
-
-    short*    LD_twoBytes =  new short[arrSize *arrSize]();
-    for (uint i = 0; i < arrSize; i ++)
-        for (uint j = 0; j < arrSize; j ++)
-            LD_twoBytes[i*arrSize + j] = short( LD[i*arrSize + j] * 10000);
-
-    uint windSize = 10000;
-    writeLD2File<short>(LD_twoBytes, arrSize, &refBedFile.bp[0], windSize, "tt2");
-    int testDim = 0;
-//    short* LD_loaded = readLDFromFile("tt2",  testDim);
-//    for (uint i =0; i < arrSize; i ++)
-//        LD_loaded[i*arrSize + i]  = 1 * 10000;
-//
-//
-//    double diff = 0;
-//    double sum  = 0;
-//    for (uint i = 0; i < arrSize-1; i ++)
-//        for (uint j = i+1; j < arrSize; j ++)
-//        {
-//            if(refBedFile.bp[j] - refBedFile.bp[i] <= windSize )
-//                diff += fabs(LD_twoBytes[i*arrSize + j] - LD_loaded[i*arrSize + j]);
-//        }
-//    cout << diff << endl;
-//    cout << LD_loaded [1] << endl;
-//    cout << LD_twoBytes [1] << endl;
-        
-    //delete[] LD_loaded;
-    delete[] LD;
-    delete[] LD_twoBytes;
-
-
-}
 
 
 #endif  ///BLD_IO_H

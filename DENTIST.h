@@ -1,7 +1,6 @@
 #ifndef __DENTIST__
 #define __DENTIST__
 
-#define MAX_LINE_SIZE 0x10000
 
 #include "invoker.h"
 #include "headers.h"
@@ -21,7 +20,6 @@
 using namespace std;
 
 
-//#void runQCForEQTL(string bfile, SMRWK& smrwk, map<string,long>& seqNoMap, int thread_num, SMRWK& smrwk_tmp, double Degree_QC);
 
 
 
@@ -164,106 +162,6 @@ GWAS::GWAS (string summmaryFile, bool ifGZ)
     gzclose(file);
 
 };
-/// GWAS::GWAS (string summmaryFile)
-/// {
-///     bool warnnullfreq=false;
-///     ifstream gwasFile (summmaryFile);
-///     if (!gwasFile.is_open())
-///     {
-///         //fprintf (stderr, "%s: Couldn't open file %s\n", summmaryFile, strerror (errno));
-///         exit (EXIT_FAILURE);
-///     }
-///     cout << "Reading GWAS summary data from [" + summmaryFile  + "]." << endl;
-///     int lineNum = 0;
-///     char buf[MAX_LINE_SIZE];
-///     gwasFile.getline(buf,MAX_LINE_SIZE);// the header
-/// 
-///    
-/// 
-/// 
-///     if(buf[0]=='\0')
-///     {
-///         printf("ERROR: the first row of the file %s is empty.\n", summmaryFile.c_str());
-///         exit(EXIT_FAILURE);
-///     }
-///     vector<string> vs_buf;
-///     split_string(buf, vs_buf, " \t\n");
-///     to_upper(vs_buf[0]);
-///     if(vs_buf[0]!="SNP") {
-///         printf("ERROR: %s should have headers that start with \"SNP\" rather than %s.\n", summmaryFile.c_str(), vs_buf);
-///         exit(EXIT_FAILURE);
-///     }
-/// 
-/// 
-///     while(!gwasFile.eof())
-///     {
-///         gwasFile.getline(buf,MAX_LINE_SIZE);
-///         
-///         if(buf[0]!='\0'){
-///             vs_buf.clear();
-///             int col_num = split_string(buf, vs_buf, " \t\n");
-///             if(col_num!=8) {
-///                 printf("ERROR: column number is not correct in row %d!\n", lineNum+2);
-///                 exit(EXIT_FAILURE);
-///             }
-///             if(vs_buf[0]=="NA" || vs_buf[0]=="na"){
-///                 printf("ERROR: the SNP name is \'NA\' in row %d.\n", lineNum+2);
-///                 exit(EXIT_FAILURE);
-///             }
-///             this->rs.push_back(vs_buf[0]);
-///             if(vs_buf[1]=="NA" || vs_buf[1]=="na"){
-///                 printf("ERROR: allele1 is \'NA\' in row %d.\n", lineNum+2);
-///                 exit(EXIT_FAILURE);
-///             }
-///             to_upper(vs_buf[1]);
-///             this->A1.push_back(vs_buf[1]);
-///             
-///             if(vs_buf[2]=="NA" || vs_buf[2]=="na"){
-///                 printf("ERROR: allele2 is \'NA\' in row %d.\n", lineNum+2);
-///                 exit(EXIT_FAILURE);
-///             }
-///             to_upper(vs_buf[2]);
-///             this->A2.push_back(vs_buf[2]);
-///             
-///             if(vs_buf[3]=="NA" || vs_buf[3]=="na")
-///             {
-///                 if(!warnnullfreq){
-///                     warnnullfreq=true;
-///                     printf("WARNING: frequency is \'NA\' in one or more rows.\n");
-///                 }
-///                 this->maf.push_back(-9);
-///                 
-///             }
-///             else {
-///                 this->maf.push_back(atof(vs_buf[3].c_str()));
-///             }
-///            
-///             
-///             if(vs_buf[4]=="NA" || vs_buf[4]=="na"){
-///                 printf("WARNING: effect size is \'NA\' in row %d.\n", lineNum+2);
-///                 this->b.push_back(0);
-///             } else {
-///                 this->b.push_back(atof(vs_buf[4].c_str()));
-///             }
-///             if(vs_buf[5]=="NA" || vs_buf[5]=="na"){
-///                 printf("WARNING: standard error is \'NA\' in row %d.\n", lineNum+2);
-///                 this->se.push_back(-9);
-///             } else {
-///                 this->se.push_back(atof(vs_buf[5].c_str()));
-///             }
-/// 
-///             
-///             this->zscore.push_back( this->b [b.size() -1]/ this->se [se.size() -1] );
-///             this->pValue.push_back(atof(vs_buf[6].c_str()));
-///             this->splSize.push_back(atoi(vs_buf[7].c_str()));
-///             this->_include.push_back(lineNum);
-///             lineNum++;
-///         }
-///     }
-///     this->M = this->_include.size();
-///     cout <<"GWAS summary data of "<< this->M << " SNPs to be included from [" + string( summmaryFile) + "]." << endl;
-///     gwasFile.close();
-/// };
 
 map<string, double> createMap(const vector<string>& rsID, const vector<double>& maf, const vector<string>& A1, const vector<string>& A2)
 {
@@ -289,14 +187,19 @@ map<string, double> createMap(const vector<string>& rsID, const vector<double>& 
     return mm;
 }
 
-void deltaMAF(GWAS&   gwas, BedFile& ref)
+void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, 
+                vector<bool>& toFlip, vector<string>& rsID,vector<uint>& bp,  vector<long int>& seqNo, vector<double>& zScores )
 {
     auto m1 = createMap (gwas.rs, gwas.maf, gwas.A1, gwas.A2);
     auto m2 = createMap (ref.rs, ref.maf, ref.A1, ref.A2);
 
-    float threshold = 0.1;
-    vector<uint> updatedInclude;
+    vector<bool>   toFlip_tmp ;
+    vector<string> rsID_tmp   ;
+    vector<uint>   bp_tmp     ;
+    vector<long int>   seqNo_tmp     ;
+    vector<double>   zScore_tmp;
 
+    vector<uint> updatedInclude;
     int before = 0;
     for (uint kk =0; kk < ref.include.size(); kk ++)
     {
@@ -323,10 +226,24 @@ void deltaMAF(GWAS&   gwas, BedFile& ref)
                 && fabs(m1[key] - m2[key]) < threshold)
         {
             updatedInclude.push_back(i);
+            toFlip_tmp.push_back(toFlip[kk]);
+            rsID_tmp.push_back(rsID[kk]);
+            bp_tmp.push_back(bp[kk]);
+            seqNo_tmp.push_back(seqNo[kk]);
+            zScore_tmp.push_back(zScores[kk]);
+
         }
     }
+toFlip = toFlip_tmp;
+rsID   = rsID_tmp  ;
+bp     = bp_tmp    ;
+seqNo  = seqNo_tmp    ;
+zScores = zScore_tmp    ;
+
+
+
     ref.include = updatedInclude;
-    printf("[info] %d (%.1f%%) SNPs were filtered when applying deltaMaf %f. \n",  before - ref.include.size(),  (before - ref.include.size() ) * 1.0 * 100/ before, threshold);
+    printf("[info] %d (%.1f%%) SNPs were filtered when applying deltaMaf %f. %d retained. \n",  before - ref.include.size(),  (before - ref.include.size() ) * 1.0 * 100/ before, threshold, ref.include.size());
 
 
 
@@ -380,14 +297,12 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
     int    maxDim      = opt.maxDim; 
     int    minDim      = opt.minDim;
     int    thread_num  = opt.thread_num;
-    double Degree_QC   = opt.Degree_QC;
     int    doDebug     = opt.debugMode;
-    double lambda      = opt.lambda;
     string bedFile = bfileName + ".bed";
     vector<int> toKeep;
     int cutoff = maxDim;
     int maxBlockSize  = opt.maxDim;
-    int minBlockSize  = 2000;
+    const int minBlockSize  = 2000;
     cutoff = opt.maxDist;
 
     bool  readLD = opt.loadLD;
@@ -495,9 +410,6 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
 
     uint theMaxDim = (opt.maxDim + opt.minDim);
     LDType* LD = new LDType[  theMaxDim *  theMaxDim]();
-    //readLD = false;
-    //
-    //
 
     for (uint k = 0; k < startList.size(); k ++ )
     {
@@ -507,11 +419,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         uint fillEndIdx   = fillEndList[k];
 
         cout << endIdx << ", "<< startIdx<< endl;
-        //cout << endIdx - startIdx<< endl;
-        //cout << seqNos.size()<< endl;
-        //cout << flipped.size()<< endl;
-
-
+ 
         if(readLD)
         {
             // if(endIdx == seqNos.size())
@@ -549,8 +457,6 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
 
                     if(LD [i * rtSeqNos.size() + j] == 0) 
                         zeros ++;
-
-                    
                     if(fabs(LD [i * rtSeqNos.size() + j]) > 1) 
                         greaterThanOnes ++;
                                
@@ -559,8 +465,6 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
             cout << greaterThanOnes << ", " << zeros << endl;
             cout << diagSum/ rtSeqNos.size() << endl;
             delete[] LDFromFile;
-
-
         }
 
 
@@ -590,10 +494,10 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         if((endIdx - startIdx) > minDim/5 )
         {
             testMethods(bedFile, rsIDs_tmp, seqNos_tmp, toAvert, zScores_tmp, nMarkers, 
-                    nSamples, endIdx - startIdx +1,lambda, qcFile, thread_num, toKeep,
-                    Degree_QC, imputed, rsq, zscore_e, ifDup, 
+                    nSamples, endIdx - startIdx +1, qcFile, thread_num, toKeep,
+                     imputed, rsq, zscore_e, ifDup, 
                     startIdx,
-                    fillStartIdx, fillEndIdx, LD, nKept, opt.withNA, readLD);
+                    fillStartIdx, fillEndIdx, LD, nKept, opt, readLD);
                     //(startIdx < pre_end) *  ((endIdx - startIdx)/4) + startIdx,   endIdx, LD, nKept );
         }
         else
@@ -632,8 +536,6 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
     int    maxDim      = opt.maxDim; 
     int    minDim      = opt.minDim;
     int    thread_num  = opt.thread_num;
-    double Degree_QC   = opt.Degree_QC;
-    double lambda      = opt.lambda;
     string bedFile = bfileName + ".bed";
     vector<int> toKeep;
     int cutoff = maxDim;
@@ -706,10 +608,10 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
 
             bool readLD = true;
             testMethods(bedFile, rsIDs_tmp, seqNos_tmp, toAvert, zScores_tmp, nMarkers, 
-                            nSamples, endIdx - startIdx +1,lambda, qcFile, thread_num, toKeep,
-                            Degree_QC, imputed, rsq, zscore_e, ifDup, 
+                            nSamples, endIdx - startIdx +1, qcFile, thread_num, toKeep,
+                             imputed, rsq, zscore_e, ifDup, 
                             startIdx,
-                            notStartInterval * (cutoff/4) + startIdx,   endIdx -  (cutoff/4) * notLastInterval, LD, nKept, opt.withNA, readLD);
+                            notStartInterval * (cutoff/4) + startIdx,   endIdx -  (cutoff/4) * notLastInterval, LD, nKept, opt, readLD);
                             //startIdx,   endIdx);
             pre_start = startIdx;
             preDim   = seqNos_tmp.size();
@@ -745,6 +647,8 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
         id_map [ gtab.rs[i] ] = i;
     //for (long int j =0 ; j < btab.rs.size(); j ++)
     int sum = 0;
+    auto include_tmp = btab.include;
+    include_tmp.resize(0);
     for (long int k =0 ; k < btab.include.size(); k ++)
     {
         uint j = btab.include[k];
@@ -761,6 +665,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
                 bp.push_back(btab.bp[j]);
                 toFlip.push_back(false);
                 //alignToWhich[i] = btab.seqNo[j];
+                include_tmp.push_back(j);
             sum ++;
             }
             else if(gtab.A1[i] == btab.A2[j] && gtab.A2[i] == btab.A1[j]  )
@@ -772,11 +677,13 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
                 toFlip.push_back(true);
                 //alignToWhich[i] = btab.seqNo[j];
                 //haveFliped[i] = true;
+                include_tmp.push_back(j);
             sum ++;
             } 
         }
     }
     printf("[info] %d SNPs (rsID) were shared between the summary and reference data. \n", sum);
+    btab.include = include_tmp;
 
 
 
@@ -786,7 +693,6 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<long 
 
 
 
-//void runQCForEQTL(string bfile, bInfo* bdata, eqtlInfo* esdata, int probechr, vector<string>& allSNPs, vector<string>& toFlip, char* outFileName, int thread_num, double Degree_QC )
 void runQC(const Options& opt)
 {
     string summmaryFile = opt.summmaryFile;
@@ -876,11 +782,12 @@ void runQC(const Options& opt)
     vector<uint> bp;
     alignGWAS (gwasDat, ref,   zScore,  seqNo,  toFlip, rsID, bp);
 
-
-    deltaMAF  (gwasDat, ref);
+    if(opt.deltaMAF != -1)
+        deltaMAF  (gwasDat, ref, opt.deltaMAF, toFlip, rsID, bp, seqNo, zScore);
     
 
     if(opt.maxDist != -1) {
+        // stop("%d %d %d %d", rsID.size(), bp.size(), zScore.size(), seqNo.size() );
         segmentedQCed_dist (bfileName, qcFile, ref.N, ref.M,  rsID, bp, zScore, seqNo, toFlip, opt);
     } 
     else {

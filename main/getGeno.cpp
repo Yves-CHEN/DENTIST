@@ -5,9 +5,10 @@
 int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, long sizeOfMarkIdx,  int* result)
 {
 
+    const int individualsPerByte = 4;
 
-    uint perMakerSize = ceil ( (nSample) / 4.0  );
-    uint nBlanks   = ( 4 - (nSample) % 4  ) % 4; //
+    uint perMakerSize = ceil ( (nSample) / 1.0 / individualsPerByte  );
+    uint nBlanks   = ( 4 - (nSample) % individualsPerByte  ) % individualsPerByte; //
     long lSize =0;
     /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes in older version.
     int const nByteHeader = 9;

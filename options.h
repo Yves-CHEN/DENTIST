@@ -12,8 +12,10 @@ public:
     int    minDim      ;
     int    maxDist;
     int    thread_num  ;
-    double Degree_QC   ;
-    double lambda      ;
+    double dupThresh   ;
+
+    double pValueThreshold;
+    double deltaMAF;
     string targetSNP   ;
     string extractFile;
     bool   ignoreWarnings ;
@@ -116,10 +118,13 @@ public:
         flags.push_back("--out");
         thread_num    = 1;      // number of threads for QC
         flags.push_back("--thread-num");
-        Degree_QC     = 0.3;    // percentage of probes to be filtered
-        // flags.push_back("--degree-of-QC");
-        lambda        = 0.1;    // the lambda for Ridge regression 
-        // flags.push_back("--lambda");
+        dupThresh     = 0.99;    // percentage of probes to be filtered
+        flags.push_back("--dup-threshold");
+        pValueThreshold   = 5.0369e-8;    // percentage of probes to be filtered
+        flags.push_back("--p-value-threshold");
+        deltaMAF       =  -1;
+        flags.push_back("--delta-MAF");
+
         maxDim        = 30000;   // default max window size for imputation
         // flags.push_back("--min-wind");
         mafThresh     = -1;   // default -1 for no restrictions on maf.
@@ -275,21 +280,24 @@ void Options::parseOptions(int nArgs, char* option_str[])
             }
         }
 
-        if(strcmp(option_str[i], "--degree-of-QC") == 0){
-            Degree_QC = atof(option_str[++i]);
-            cout << option_str[i-1] << " " << Degree_QC  << endl;
-            if(Degree_QC  < 0 || Degree_QC >= 1) 
+        if(strcmp(option_str[i], "--delta-MAF") == 0){
+            deltaMAF = atof(option_str[++i]);
+            cout << option_str[i-1] << " " << deltaMAF << endl;
+            if(deltaMAF < 0 || deltaMAF > 1) 
             {
-                fprintf (stderr, "Error: --degree-of-QC should be between 0 and 1.\n");
+                fprintf (stderr, "Error: --delta-MAF should be between 0 and 1 that is [0 1].\n");
                 exit (EXIT_FAILURE);
             }
         }
-        if(strcmp(option_str[i], "--lambda") == 0){
-            lambda = atof(option_str[++i]);
-            cout << option_str[i-1] << " " << lambda << endl;
-            if(Degree_QC  < 0 || Degree_QC >= 0.1) 
+
+
+
+        if(strcmp(option_str[i], "--dup-threshold") == 0){
+            dupThresh = atof(option_str[++i]);
+            cout << option_str[i-1] << " " << dupThresh << endl;
+            if(dupThresh  < 0.01 || dupThresh > 1) 
             {
-                fprintf (stderr, "Error: --lambda should be between 0 and 0.1.\n");
+                fprintf (stderr, "Error: --dup-threshold should be between 0.01 and 1 that is [0.01 1].\n");
                 exit (EXIT_FAILURE);
             }
         }

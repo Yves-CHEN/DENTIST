@@ -3,6 +3,8 @@
 #include "stats/FDR.h"
 
 #include <Eigen/Dense> 
+#include <boost/math/distributions/inverse_chi_squared.hpp>
+
 
 
 
@@ -247,118 +249,12 @@ bool multiRegress(double* matXY, int* dimMat1, double* matV, int* dimMat2, doubl
 }
 
 
-void oneIteration_old (double* LDmat, uint* size, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, double lambda, int* ncpus)
-{
-printf("[info] chosen size: %d\n", idx.size());
-for (uint i =0; i < 10; i ++)
-    printf("%d \t", idx[i]);
-printf("\n" );
 
-
-
-///omp_set_num_threads( 1 );
-    printf("[info] chosen size: %d\n", idx.size());
-    double* LDmatSubset = new double[idx.size() * idx.size()];
-    double* inverted    = new double[idx.size() * idx.size()](); // braket indicates setting to zeros
-    // const double lambda = 0.1;
-#pragma omp parallel for
-    for (uint i = 0; i < idx.size(); i ++)
-        for (uint j = 0; j < idx.size(); j ++)
-            LDmatSubset[i * idx.size() + j] = LDmat[idx[i] * (*size) + idx[j]];
-
-#pragma omp parallel for
-    for (uint i = 0; i < idx.size(); i ++)
-    {
-        LDmatSubset[i * idx.size() + i]  +=  lambda;
-        inverted[i * idx.size() + i]  = 1;
-    }
-
-    double minLD = 1000;
-    for (uint i = 0; i < idx.size(); i ++)
-        if(minLD > fabs(LDmatSubset[i * idx.size() + i]) ) {minLD =  fabs(LDmatSubset[i * idx.size() + i]); }
-    int msg = 0, tmpSize = idx.size();
-    calInversion(LDmatSubset, inverted, &tmpSize, &msg, ncpus);
-    double minV = 100000;
-    for (uint i = 0; i < idx.size(); i ++)
-        if(minV > fabs(  inverted[i * idx.size() + i]) ) {minV =  fabs(  inverted[i * idx.size() + i]); }
-    printf("min diag %f %f \n", minV, minLD);
-
-
-
-     struct timespec start, finish;
-     double elapsed;
-     clock_gettime(CLOCK_MONOTONIC, &start);
-    
-    Eigen::MatrixXd LD_it (idx2.size(),idx.size() );
-    Eigen::MatrixXd beta_eigen (idx2.size(),idx.size() );
-    Eigen::MatrixXd LD_tt_inv (idx.size(),idx.size() );
-    Eigen::VectorXd  zScore_eigen (idx.size() );
-    Eigen::VectorXd  zScore_eigen_imp (idx2.size() );
-    Eigen::VectorXd  rsq_eigen (idx2.size() );
-#pragma omp parallel for
-    for (uint i = 0; i < idx2.size(); i ++)
-        for (uint k = 0; k < idx.size(); k ++)
-                LD_it(i,k) =  LDmat[idx2[i] * (*size) + idx[k] ] ;
-#pragma omp parallel for
-    for (uint i = 0; i < idx.size(); i ++)
-        for (uint k = 0; k < idx.size(); k ++)
-                LD_tt_inv(i,k) =  inverted[i * (idx.size()) + k] ;
-#pragma omp parallel for
-    for (uint i = 0; i < idx.size(); i ++)
-        zScore_eigen(i)  = zScore[idx[i] ];
-    beta_eigen = LD_it  * LD_tt_inv;
-    zScore_eigen_imp = beta_eigen * zScore_eigen;
-    rsq_eigen = (beta_eigen * LD_it.transpose() ).diagonal();
-#pragma omp parallel for
-    for (uint i = 0; i < idx2.size(); i ++)
-    {
-        imputedZ[idx2[i] ] = zScore_eigen_imp (i);
-        rsqList [idx2[i]] = rsq_eigen(i);
-        zScore_e[idx2[i]] = (zScore[idx2[i] ] - imputedZ[idx2[i]] ) /  sqrt( 1 - rsqList [idx2[i]] );
-        //if(rsqList [idx2[i]]  >0.7) imputedZ[idx2[i]] /= sqrt(rsqList [idx2[i]] );
-    }
-
-
-
-    //*******************************************************************************
-    //   This is doing the same thing as above (eigen multiplication), but this is
-    //     much slower ....
-    //*******************************************************************************
-// #pragma omp parallel for
-//         for (uint i = 0; i < idx2.size(); i ++)
-//         {
-//             //double imputedZ = 0;
-//             imputedZ[idx2[i]] =0;
-//             double rsq = 0;
-//             for (uint j = 0; j < idx.size(); j ++)
-//             {
-//                 double w =0;
-//                 for (uint k = 0; k < idx.size(); k ++)
-//                      w +=LDmat[idx2[i] * (*size) + idx[k] ] * inverted[k * idx.size() + j];
-//                 imputedZ[idx2[i]] += w * zScore[idx[j] ];
-//                 rsq +=  w *  LDmat[idx2[i] * (*size) + idx[j] ];
-//             }
-//             assert(rsq >= 0);
-//             //if(rsq >0.7) imputedZ[idx2[i]] /= sqrt(rsq);
-//             rsqList [idx2[i]] = rsq;
-// 
-//         }
-
-    clock_gettime(CLOCK_MONOTONIC, &finish);
-    elapsed = (finish.tv_sec - start.tv_sec);
-    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("[info] Step 1 : Time elapsed is %f. \n", elapsed );
-
-
-
-    delete[] LDmatSubset;
-    delete[] inverted;
-}
 
 
 
 template <class T>
-void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, double lambda, int* ncpus)
+void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, int* ncpus)
 {
     omp_set_num_threads(*ncpus);
     Eigen::setNbThreads(*ncpus);
@@ -384,9 +280,6 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
         for (uint j = 0; j < idx.size(); j ++)
             VV(i,j) =   LDmat[idx[i] * (*matSize) + idx[j]];
 
-    // lambda = 0.1;
-    // for (uint i = 0; i < idx.size(); i ++)
-    //     VV(i , i)  +=  lambda;
     struct timespec start, finish;
     double elapsed;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -467,6 +360,14 @@ void testSymetry(double* LDmat, uint* markerSize)
         }
 }
 
+double logPvalueChisq1(double stat)
+{
+    boost::math::inverse_chi_squared_distribution<double> mydist(1);
+    double p = boost::math::cdf(mydist,1/(stat));
+    return ( -log10(p) ) ;
+}
+
+
 // void  regularizeLD (double* LDmat, int markerSize)
 // {   
 //     Eigen::MatrixXd VV (markerSize,  markerSize );
@@ -506,17 +407,16 @@ void testSymetry(double* LDmat, uint* markerSize)
 
 template <class T>
 void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double* lambda,
+        double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
         int* interested, int* ncpus)
 {
  
-    double internalControl = 5.45;
+    //double internalControl = 5.45;
     D(printf("\n------------------------\n");                 );
     D(printf("--------- DENTIST  ---------\n");               );
     D(printf("ncpus = %d \n", *ncpus);                        );
     D(printf("size  = %d \n", *markerSize);                   );
-    D(printf("lambda = %f \n", *lambda);                      );
-    D(printf("zscore threshold = %f \n", internalControl );   );
+    D(printf("P-value threshold = %f \n", pValueThreshold);   );
     int nProcessors = omp_get_max_threads();
     if(*ncpus < nProcessors) nProcessors = *ncpus;
         omp_set_num_threads( nProcessors );
@@ -544,7 +444,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         std::vector<uint> idx2_QCed;
         std::vector<size_t> fullIdx_tmp;
         double threshold = 0;
-        oneIteration<T>(LDmat, markerSize, zScore, idx, idx2, imputedZ, rsq, zScore_e, *nSample, *lambda, ncpus);
+        oneIteration<T>(LDmat, markerSize, zScore, idx, idx2, imputedZ, rsq, zScore_e, *nSample,  ncpus);
         diff.resize(idx2.size());
         // for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore[idx2[i]] - imputedZ[idx2[i]]);
         for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[idx2[i]]);
@@ -557,7 +457,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             // else
             //     idx.push_back(idx2[i]);
         }
-        oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, *lambda, ncpus);
+        oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, ncpus);
         D(printf("%d, %d\n", idx.size(), idx2.size()););
         diff.resize(fullIdx.size());
 
@@ -566,7 +466,8 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         std::vector<double> chisq;
         for(uint i = 0; i < diff.size(); i ++)
         {
-            if( !(diff[i] > threshold && diff[i] > internalControl ) ) 
+ 
+            if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
             {
                 fullIdx_tmp.push_back(fullIdx[i]);
                 chisq.push_back( zScore_e[fullIdx[i]] * zScore_e[fullIdx[i]] ); 
@@ -603,22 +504,22 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
     //     else
     //         idx2.push_back(fullIdx[i]);
     // }
-    // oneIteration<T>(LDmat, markerSize, zScore, idx2, idx, imputedZ, rsq, zScore_e, *lambda, ncpus);
+    // oneIteration<T>(LDmat, markerSize, zScore, idx2, idx, imputedZ, rsq, zScore_e,  ncpus);
 
 
 }
 // instantiate T into float
 template void DENTIST <float>(float* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double* lambda,
+        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
         int* interested, int* ncpus);
 
-template void oneIteration <float> (float* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, double lambda, int* ncpus);
+template void oneIteration <float> (float* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample,  int* ncpus);
 
 template void  DENTIST<double >(double* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double* lambda,
+        double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,
         int* interested, int* ncpus);
 
-template void oneIteration <double> (double* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, double lambda, int* ncpus);
+template void oneIteration <double> (double* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample,  int* ncpus);
 
 
 
