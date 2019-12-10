@@ -416,7 +416,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
     D(printf("--------- DENTIST  ---------\n");               );
     D(printf("ncpus = %d \n", *ncpus);                        );
     D(printf("size  = %d \n", *markerSize);                   );
-    D(printf("P-value threshold = %f \n", pValueThreshold);   );
+    D(printf("P-value threshold = %e \n", pValueThreshold);   );
     int nProcessors = omp_get_max_threads();
     if(*ncpus < nProcessors) nProcessors = *ncpus;
         omp_set_num_threads( nProcessors );

@@ -285,8 +285,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
         markMissing[i]  = ~( markMissing[i] | (markMissing[i] >> 1) );
     }
 
-
-
+    // segmenting
     const uint maxBlockSize = 80000000;  // 80M
     vector <uint> startingIdx; 
     vector <uint> readLen; 
@@ -305,15 +304,6 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
         startingIdx.push_back (counter);
         readLen.push_back(sizeOfMarkIdx);
     }
-
-
-//    for (int i = 0; i < readLen.size(); i ++ )
-//        cout << readLen[i] << "\t";
-//    cout << endl;
-//
-//    for (int i = 0; i < readLen.size(); i ++ )
-//        cout << startingIdx[i] << "\t";
-//    cout << endl;
 
     vector<double>   maf (nMarker, -1);
     for (uint block_i =0; block_i < readLen.size(); block_i ++)
@@ -347,12 +337,8 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
             E_i         = double(sum_i  ) / (nKeptSample - nMissing);
             maf[startingIdx[block_i] + i] = 1- E_i / 2;
         }
-
-
-
         delete [] bufferAllMarkers;
         delete [] GENO;
-
     }
 
     return maf;

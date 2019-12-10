@@ -268,7 +268,7 @@ uint moveKeep(double* LD, uint arrSize, uint currentDim, uint keepFromIdx)
 template<class T>
 uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx)
 {
-    if(arrSize  - keepFromIdx <= 0) return 0;
+    if(long(arrSize)  - long(keepFromIdx) <= 0) return 0;
     uint tmp_dim = arrSize  - keepFromIdx;
     double* LD_tmp = new double [tmp_dim * tmp_dim];
     for (uint i = keepFromIdx, m=0; i < arrSize ; i ++, m ++ )
@@ -417,7 +417,11 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         uint endIdx   =   endList[k];
         uint fillStartIdx = fillStartList[k];
         uint fillEndIdx   = fillEndList[k];
-
+        if((endIdx - startIdx) <= minDim/5 ) 
+        {
+            preDim = 0;
+            continue;
+        }
         cout << endIdx << ", "<< startIdx<< endl;
  
         if(readLD)
@@ -477,7 +481,6 @@ void segmentedQCed_dist (string bfileName, string qcFile, long int nSamples, lon
         int nKept = 0;
         if(!opt.loadLD )
             nKept = moveKeepProtect<LDType>( LD, preDim, rangeSize, startIdx - pre_start); // reUse LD part
-
         zScores_tmp.resize(rangeSize);
         seqNos_tmp.resize(rangeSize);
         rsIDs_tmp.resize(rangeSize);
