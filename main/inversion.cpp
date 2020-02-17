@@ -254,13 +254,11 @@ bool multiRegress(double* matXY, int* dimMat1, double* matV, int* dimMat2, doubl
 
 
 template <class T>
-void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, int* ncpus)
+void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float probSVD, int* ncpus)
 {
     omp_set_num_threads(*ncpus);
     Eigen::setNbThreads(*ncpus);
-    int K = idx.size() / 2;
-    if(nSample/2 < K) K = nSample/2;
-    int N = idx.size();
+    uint K = std::min(uint(idx.size()),nSample) * probSVD;
     double* LDmatSubset = new double[idx.size() * idx.size()];
     Eigen::MatrixXd LD_it (idx2.size(),idx.size() );
     Eigen::VectorXd  zScore_eigen (idx.size() );
@@ -294,11 +292,8 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
         if ( es.eigenvalues()(j) < 0.0001) nZeros ++;
     nRank = nRank - nZeros;
     D(cout << "nRank: "  << nRank <<"K: " << K << endl;);
-
     if(K>nRank) K = nRank ;
-    // K = nRank /2 ;
 
-    
     Eigen::MatrixXd  ui = Eigen::MatrixXd::Identity(es.eigenvectors().rows(), K);
     Eigen::MatrixXd  wi = Eigen::MatrixXd::Identity(K, K);
 
@@ -326,7 +321,8 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
             printf("[error] Divividing zero : Rsq = %f \n", rsq_eigen(i));
             exit(-1);
         }
-        zScore_e[idx2[i]] = (zScore[idx2[i] ] - imputedZ[idx2[i]] ) /  sqrt( 1 - rsqList [idx2[i]] );
+        uint j = idx2[i];
+        zScore_e[j] = (zScore[j ] - imputedZ[j] ) /  sqrt( LDmat[*matSize * j + j] - rsqList [j] );
         //if(rsqList [idx2[i]]  >0.7) imputedZ[idx2[i]] /= sqrt(rsqList [idx2[i]] );
     }
 
@@ -403,12 +399,140 @@ double logPvalueChisq1(double stat)
 //       for (uint j = 0; j < markerSize; j ++)
 //              LDmat[i * (markerSize) + j] = aa(i,j) ;
 // }   
+///  template <class T>
+///  void ImpG(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
+///          double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
+///          int* interested, int* ncpus)
+///  {
+///   
+///      //double internalControl = 5.45;
+///      D(printf("\n------------------------\n");                 );
+///      D(printf("--------- DENTIST  ---------\n");               );
+///      D(printf("ncpus = %d \n", *ncpus);                        );
+///      D(printf("size  = %d \n", *markerSize);                   );
+///      D(printf("P-value threshold = %e \n", pValueThreshold);   );
+///      int nProcessors = omp_get_max_threads();
+///      if(*ncpus < nProcessors) nProcessors = *ncpus;
+///          omp_set_num_threads( nProcessors );
+///  
+///      // init
+///      std::vector<size_t> randOrder = generateSetOfNumbers(*markerSize, 10);
+///      std::vector<uint> idx;
+///      std::vector<uint> idx2;
+///      std::vector<size_t> fullIdx = randOrder;
+///      for (uint i = 0; i < *markerSize; i ++)
+///      {
+///          if(randOrder[i] > (*markerSize)/2)
+///              idx.push_back(i);
+///          else
+///              idx2.push_back(i);
+///      }
+///      std::vector<double> diff;
+///  
+///      //for (uint t =0; t < 1; t ++)
+///      for (uint t =0; t < 8; t ++)
+///      {
+///          std::vector<uint> idx2_QCed;
+///          std::vector<size_t> fullIdx_tmp;
+///          double threshold = 0;
+///          oneIteration<T>(LDmat, markerSize, zScore, idx, idx2, imputedZ, rsq, zScore_e, *nSample,  ncpus);
+///          diff.resize(idx2.size());
+///          // for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore[idx2[i]] - imputedZ[idx2[i]]);
+///          for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[idx2[i]]);
+///          threshold = getQuantile <double> (diff , (99/100.0)) ;
+///          D(printf("thresh %f \n", threshold););
+///          for(uint i = 0; i < diff.size(); i ++)
+///          {
+///              if( (diff[i] < threshold) ) 
+///                  idx2_QCed.push_back(idx2[i]);
+///              // else
+///              //     idx.push_back(idx2[i]);
+///          }
+///          oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, ncpus);
+///          D(printf("%d, %d\n", idx.size(), idx2.size()););
+///          diff.resize(fullIdx.size());
+///  
+///          for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[fullIdx[i]]);
+///          threshold = getQuantile <double> (diff , (99.5/100.0)) ;
+///          std::vector<double> chisq;
+///          for(uint i = 0; i < diff.size(); i ++)
+///          {
+///   
+///              if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
+///              {
+///                  fullIdx_tmp.push_back(fullIdx[i]);
+///                  chisq.push_back( zScore_e[fullIdx[i]] * zScore_e[fullIdx[i]] ); 
+///              }
+///          }
+///          D(cout << "max Chisq = " << *std::max_element(chisq.begin(), chisq.end()) << endl;);
+///          assert(chisq.size()>2);
+///          double sum = std::accumulate(std::begin(chisq), std::end(chisq), 0.0);
+///          double inflationFactor =  sum / chisq.size();
+///          D(printf("[Notice] Inflation factor %f \n", inflationFactor);)
+///          fullIdx = fullIdx_tmp;
+///          randOrder = generateSetOfNumbers(fullIdx.size() , 20000 + t*20000);
+///          idx.resize(0);
+///          idx2.resize(0);
+///          for (uint i = 0; i < fullIdx.size(); i ++)
+///          {
+///              if(randOrder[i] > (fullIdx.size())/2)
+///                  idx.push_back(fullIdx[i]);
+///              else
+///                  idx2.push_back(fullIdx[i]);
+///          }
+///  
+///          D(printf("%d, %d\n", idx.size(), idx2.size());)
+///      }
+///  
+///      // //  Rescue
+///      // diff.resize(fullIdx.size());
+///      // for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(rsq[fullIdx[i]]);
+///      // double threshold = getQuantile <double> (diff , (20/100.0)) ;
+///      // for(uint i = 0; i < diff.size(); i ++)
+///      // {
+///      //     if( (diff[i] < threshold) )
+///      //         idx.push_back(fullIdx[i]);
+///      //     else
+///      //         idx2.push_back(fullIdx[i]);
+///      // }
+///      // oneIteration<T>(LDmat, markerSize, zScore, idx2, idx, imputedZ, rsq, zScore_e,  ncpus);
+///  
+///  
+///  }
 
+template <class T>
+void impute(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
+        double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
+        float propSVD, int* ncpus)
+{
+    D(printf("\n------------------------\n");                 );
+    D(printf("--------- DENTIST  ---------\n");               );
+    D(printf("ncpus = %d \n", *ncpus);                        );
+    D(printf("size  = %d \n", *markerSize);                   );
+    D(printf("P-value threshold = %e \n", pValueThreshold);   );
+    omp_set_num_threads( *ncpus );
+
+    // init
+    std::vector<size_t> randOrder = generateSetOfNumbers(*markerSize, 10);
+    std::vector<uint> idx;
+    std::vector<uint> idx2;
+    std::vector<size_t> fullIdx = randOrder;
+    for (uint i = 0; i < *markerSize; i ++)
+    {
+        if(zScore[i] == HUGE_VAL)
+            idx2.push_back(i);
+        else
+            idx.push_back(i);
+    }
+    oneIteration<T>(LDmat, markerSize, zScore, idx, idx2, imputedZ, rsq,
+            zScore_e, *nSample, propSVD,  ncpus);
+
+}
 
 template <class T>
 void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
-        int* interested, int* ncpus)
+        int* interested, float propSVD, int* ncpus)
 {
  
     //double internalControl = 5.45;
@@ -444,7 +568,10 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         std::vector<uint> idx2_QCed;
         std::vector<size_t> fullIdx_tmp;
         double threshold = 0;
-        oneIteration<T>(LDmat, markerSize, zScore, idx, idx2, imputedZ, rsq, zScore_e, *nSample,  ncpus);
+        oneIteration<T>(LDmat, markerSize, zScore, idx, idx2, imputedZ, rsq, zScore_e, *nSample, propSVD,  ncpus);
+
+
+
         diff.resize(idx2.size());
         // for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore[idx2[i]] - imputedZ[idx2[i]]);
         for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[idx2[i]]);
@@ -457,7 +584,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             // else
             //     idx.push_back(idx2[i]);
         }
-        oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, ncpus);
+        oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, propSVD, ncpus);
         D(printf("%d, %d\n", idx.size(), idx2.size()););
         diff.resize(fullIdx.size());
 
@@ -466,18 +593,19 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         std::vector<double> chisq;
         for(uint i = 0; i < diff.size(); i ++)
         {
- 
-            if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
-            {
-                fullIdx_tmp.push_back(fullIdx[i]);
-                chisq.push_back( zScore_e[fullIdx[i]] * zScore_e[fullIdx[i]] ); 
-            }
+            chisq.push_back( zScore_e[fullIdx[i]] * zScore_e[fullIdx[i]] ); 
         }
         D(cout << "max Chisq = " << *std::max_element(chisq.begin(), chisq.end()) << endl;);
         assert(chisq.size()>2);
         double sum = std::accumulate(std::begin(chisq), std::end(chisq), 0.0);
         double inflationFactor =  sum / chisq.size();
-        D(printf("[Notice] Inflation factor %f \n", inflationFactor);)
+        D(printf("[Notice] Correction for inflation factor %f \n", inflationFactor);)
+        for(uint i = 0; i < diff.size(); i ++)
+        {
+            //if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] /inflationFactor  ) >  -log10(pValueThreshold)) ) 
+            if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
+                fullIdx_tmp.push_back(fullIdx[i]);
+        }
         fullIdx = fullIdx_tmp;
         randOrder = generateSetOfNumbers(fullIdx.size() , 20000 + t*20000);
         idx.resize(0);
@@ -489,7 +617,6 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             else
                 idx2.push_back(fullIdx[i]);
         }
-
         D(printf("%d, %d\n", idx.size(), idx2.size());)
     }
 
@@ -511,15 +638,25 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 // instantiate T into float
 template void DENTIST <float>(float* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, int* ncpus);
+        int* interested, float propSVD, int* ncpus);
 
-template void oneIteration <float> (float* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample,  int* ncpus);
+template void oneIteration <float> (float* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float propSVD,  int* ncpus);
 
 template void  DENTIST<double >(double* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,
-        int* interested, int* ncpus);
+        int* interested, float propSVD, int* ncpus);
 
-template void oneIteration <double> (double* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample,  int* ncpus);
+template void impute<double >(double* LDmat, uint* markerSize, uint* nSample,
+        double* zScore, double* imputedZ, double* rsq, double* zScore_e,
+        double pValueThreshold, float propSVD, int* ncpus);
+
+template void impute<float>(float* LDmat, uint* markerSize, uint* nSample,
+        double* zScore, double* imputedZ, double* rsq, double* zScore_e,
+        double pValueThreshold, float propSVD, int* ncpus);
+
+
+
+template void oneIteration <double> (double* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float propSVD,  int* ncpus);
 
 
 

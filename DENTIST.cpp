@@ -41,15 +41,16 @@ cout << "*******************************************************************" <<
         readLDFromFile_FromTo(opt.bldLDFile, dim , opt.readFrom, opt.readTo, ifPrint);
     }
 
-   if( opt.doWrite)
+    if( opt.doWrite)
     {
-        saveLD<short>(opt.bfileName, opt.outPrefix.c_str(), 
+        saveLD<int>(opt.bfileName, opt.outPrefix.c_str(), 
                             opt.maxDist, opt.thread_num);
     }
+    if(opt.doImpute && opt.summmaryFile != "" && opt.bfileName != "")
+        runImpute(opt);
 
-    if(opt.summmaryFile != "" && opt.bfileName != "")
+    if(opt.doQC && opt.summmaryFile != "" && opt.bfileName != "")
         runQC(opt);
-    
 
     return 0;
 }

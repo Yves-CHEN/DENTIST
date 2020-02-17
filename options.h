@@ -20,6 +20,7 @@ public:
     string extractFile;
     bool   ignoreWarnings ;
     int    withNA;
+    float   propPCtrunc;
 
     // for extracting LD from bld file.
     string  bldLDFile;
@@ -28,6 +29,8 @@ public:
     uint    readTo;
     bool     doWrite;
     bool    doCheck;
+    bool    doQC;
+    bool    doImpute;
     //const char *flgs[] ;
     vector<string> flags;
     float mafThresh     ;
@@ -141,12 +144,12 @@ public:
         flags.push_back("--wind");
         debugMode  = 0;
         flags.push_back("--debug");
-        ignoreWarnings = false;
-        flags.push_back("--ignore-warnings");
-
         loadLD = false;
         flags.push_back("--load-LD");
+        propPCtrunc = 0.5;
+        flags.push_back("--SVD-trunc-prop");
 
+   
 
         ignoreWarnings = false;
 
@@ -154,11 +157,14 @@ public:
         readTo   = 0;
         doWrite       = false;
         doCheck       = false;
-
-        flags.push_back("--bld");
+        doQC          = true;
+        doImpute      = false;
         flags.push_back("--check-LD");
         flags.push_back("--write-LD");
+        flags.push_back("--impute");
 
+        ignoreWarnings = false;
+        flags.push_back("--ignore-warnings");
 
 
     }
@@ -209,6 +215,7 @@ void Options::parseOptions(int nArgs, char* option_str[])
     {
         if(strcmp(option_str[i], "--load-LD") == 0)
         {
+            this->doQC  = false;
             loadLD = true;
             if(i+1 < nArgs)
                 Options::bool_FLAG_VALID_CK(string("--load-LD"), option_str[i+1]);
@@ -226,6 +233,7 @@ void Options::parseOptions(int nArgs, char* option_str[])
         if(strcmp(option_str[i],"--check-LD")==0)
         {
             this->doCheck = true;
+            this->doQC  = false;
             readFrom  = atoi(option_str[++i]);
             readTo    = atoi(option_str[++i]);
             //cout << option_str[i-2] << "\t" << " from ith SNP " << readFrom << " to jth SNP "
@@ -238,8 +246,18 @@ void Options::parseOptions(int nArgs, char* option_str[])
         if(strcmp(option_str[i],"--write-LD")==0)
         {
             this->doWrite  = true;
+            this->doQC  = false;
             if(i+1 < nArgs)
                 Options::bool_FLAG_VALID_CK(string("--with-LD"), option_str[i+1]);
+            cout<< option_str[i] << " " <<  " TRUE" <<endl;
+        }
+
+        if(strcmp(option_str[i],"--impute")==0)
+        {
+            this->doQC  = false;
+            this->doImpute  = true;
+            if(i+1 < nArgs)
+                Options::bool_FLAG_VALID_CK(string("--impute"), option_str[i+1]);
             cout<< option_str[i] << " " <<  " TRUE" <<endl;
         }
 
@@ -366,9 +384,14 @@ void Options::parseOptions(int nArgs, char* option_str[])
         }
 
 
-
-
-            
+        if(strcmp(option_str[i], "--SVD-trunc-prop") == 0)
+        {
+            propPCtrunc = atof(option_str[++i]);
+            //Options::FLAG_VALID_CK(string("--SVD-trunc-prop"), bfileName.c_str());
+            cout<< option_str[i-1] << " " <<  propPCtrunc <<endl;
+            if(propPCtrunc <= 0 || propPCtrunc > 1)
+                stop("[errors] --SVD-trunc-prop expects a number between (0,1].\n");
+        }
 
     }
 

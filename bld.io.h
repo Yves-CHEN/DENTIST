@@ -55,13 +55,14 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
     string outPrefix (outFilePrefix);
     string rightIdxFile = outPrefix + ".ridx";
     string bldFile      = outPrefix + ".bld";
-    FILE*  bldWriter    = fopen(bldFile.c_str(), "bw");
+    cout << bldFile << endl;
+    FILE*  bldWriter    = fopen(bldFile.c_str(), "w");
     ofstream  idxfile2 (rightIdxFile.c_str());
     const     uint maxDim = 200000;
     // read bedfile
     BedFile  ref (bedfileName);
     string bedFile = bedfileName + ".bed";
-    auto& bp   = ref.bp;
+    auto&       bp = ref.bp;
     vector<int> right(bp.size(), 0);
     findRight(&bp[0],bp.size(), right, cutoff);
 
@@ -78,12 +79,14 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
     fwrite(&reserved[0],sizeof(int), RESERVEDUNITS, bldWriter);
 
     T* LD = new T[ maxDim *  maxDim ]();
-    int    jump  = 0;
-    auto&  seqNo = ref.seqNo;
-    int withNA = 0;
+
+    int    jump   = 0;
+    auto&  seqNo  = ref.seqNo;
+    int    withNA = 1;
     uint startIdx = 0;
     assert (bp.size() >1);
     string genotypeFile = ref.bfileStr + ".bed";
+    std::cout << genotypeFile << std::endl;
     char bedFileCstr[10000] = "";
     std::strcpy ( bedFileCstr, genotypeFile.c_str());
     char* head = bedFileCstr;
@@ -108,6 +111,7 @@ void saveLD (string bedfileName, const char* outFilePrefix, uint LDwinSize, int 
 #pragma omp parallel for
         for (uint i = startIdx; i < endIdx; i ++) 
              theMarkIdx[i-startIdx] = seqNo[i];
+
         _LDFromBfile <T>(&head, &M, &N, theMarkIdx, &rangeSize,
                 toAvert, &cutoff,  &ncpus, LD, &jump, &withNA);
         delete[] theMarkIdx;
