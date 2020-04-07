@@ -36,6 +36,7 @@ public:
     float mafThresh     ;
     int   debugMode;
     bool  loadLD;
+    bool  gcControl;
     /// to be implemented
     //  double dupThresh ;  the thresh of LD r^2 between two SNPs to be considered duplicates.
     //  int nIterations; the number interations to be performed. At least one.
@@ -146,6 +147,8 @@ public:
         flags.push_back("--debug");
         loadLD = false;
         flags.push_back("--load-LD");
+        gcControl = false;
+        flags.push_back("--control-inflation");
         propPCtrunc = 0.5;
         flags.push_back("--SVD-trunc-prop");
 
@@ -221,6 +224,14 @@ void Options::parseOptions(int nArgs, char* option_str[])
                 Options::bool_FLAG_VALID_CK(string("--load-LD"), option_str[i+1]);
             cout<< option_str[i] << " " <<  " TRUE" <<endl;
         }
+        if(strcmp(option_str[i], "--control-inflation") == 0)
+        {
+            this->gcControl  = true;
+            if(i+1 < nArgs)
+                Options::bool_FLAG_VALID_CK(string("--control-inflation"), option_str[i+1]);
+            cout<< option_str[i] << " " <<  " TRUE" <<endl;
+        }
+
 
         if(strcmp(option_str[i], "--bld") == 0)
         {

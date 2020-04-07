@@ -9,13 +9,13 @@
 
 
 template <class T>
-    T getQuantile(const std::vector<T>& dat, double whichQuantile)
-    {
-         std::vector<T> diff2 = dat;
-         std::sort (diff2.begin(), diff2.end());
-         T threshold = diff2[ ceil(diff2.size()  * ( whichQuantile))  -1 ] ;
-         return (threshold);
-    }
+T getQuantile(const std::vector<T>& dat, double whichQuantile)
+{
+     std::vector<T> diff2 = dat;
+     std::sort (diff2.begin(), diff2.end());
+     T threshold = diff2[ ceil(diff2.size()  * ( whichQuantile))  -1 ] ;
+     return (threshold);
+}
 
 
 
@@ -532,7 +532,7 @@ void impute(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 template <class T>
 void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
-        int* interested, float propSVD, int* ncpus)
+        int* interested, float propSVD, bool gcControl, int* ncpus)
 {
  
     //double internalControl = 5.45;
@@ -597,14 +597,26 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         }
         D(cout << "max Chisq = " << *std::max_element(chisq.begin(), chisq.end()) << endl;);
         assert(chisq.size()>2);
-        double sum = std::accumulate(std::begin(chisq), std::end(chisq), 0.0);
-        double inflationFactor =  sum / chisq.size();
-        D(printf("[Notice] Correction for inflation factor %f \n", inflationFactor);)
+        std::nth_element(chisq.begin(), chisq.begin() + chisq.size()/2, chisq.end());
+        double inflationFactor = chisq[chisq.size()/2] / 0.46;
+        // double sum = std::accumulate(std::begin(chisq), std::end(chisq), 0.0);
+        // double inflationFactor =  sum / chisq.size();
+        if(gcControl == true)
+        {
+            D(printf("[Notice] Correction for inflation factor %f \n", inflationFactor);)
+        }
         for(uint i = 0; i < diff.size(); i ++)
         {
-            //if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] /inflationFactor  ) >  -log10(pValueThreshold)) ) 
-            if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
-                fullIdx_tmp.push_back(fullIdx[i]);
+            if(gcControl == true)
+            {
+                if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] /inflationFactor  ) >  -log10(pValueThreshold)) ) 
+                    fullIdx_tmp.push_back(fullIdx[i]);
+            } 
+            else
+            {
+                if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
+                    fullIdx_tmp.push_back(fullIdx[i]);
+            }
         }
         fullIdx = fullIdx_tmp;
         randOrder = generateSetOfNumbers(fullIdx.size() , 20000 + t*20000);
@@ -638,13 +650,13 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 // instantiate T into float
 template void DENTIST <float>(float* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int* ncpus);
 
 template void oneIteration <float> (float* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float propSVD,  int* ncpus);
 
 template void  DENTIST<double >(double* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,
-        int* interested, float propSVD, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int* ncpus);
 
 template void impute<double >(double* LDmat, uint* markerSize, uint* nSample,
         double* zScore, double* imputedZ, double* rsq, double* zScore_e,

@@ -5,7 +5,8 @@
 #include <cstdio>
 #include <cmath>
 #include <cstring>
-#include <Eigen/Dense> 
+//#include <Eigen/Dense> 
+#include <stdarg.h>  
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -19,8 +20,8 @@
 
 using namespace std;
 
-typedef  float LDType;
-//typedef  double LDType;
+//typedef  float LDType;
+typedef  double LDType;
 
 
 const uint maxSummaryRowSize = 1000000;

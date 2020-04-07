@@ -244,7 +244,7 @@ map<string, double> createMap(const vector<string>& rsID, const vector<double>& 
 
 void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip,
         vector<string>& rsID,vector<uint>& bp,  vector<long int>& seqNo,
-        vector<double>& zScores, vector<uint>& perSNP_N )
+        vector<double>& zScores, vector<uint>& perSNP_N, string outFilePrefix )
 {
     auto m1 = createMap (gwas.rs, gwas.maf, gwas.A1, gwas.A2);
     auto m2 = createMap (ref.rs, ref.maf, ref.A1, ref.A2);
@@ -270,6 +270,11 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
     }
 
 
+    ofstream exclOut (outFilePrefix + ".DENTIST.excluded.txt",  std::fstream::app);
+    vector<string> msg;
+    msg.push_back("notFoundInReference");
+    msg.push_back("AF_QC");
+
     for (uint kk =0; kk < ref.include.size(); kk ++)
     {
         uint  i = ref.include[kk];
@@ -291,7 +296,14 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
             perSNP_N_tmp.push_back(perSNP_N[kk]);
 
         }
+        else
+        {
+            exclOut << key << "\t" <<
+                  msg [ (fabs(m1[key] - m2[key]) < threshold ) + 1] << endl;
+        }
     }
+
+    exclOut.close();
     toFlip = toFlip_tmp;
     rsID   = rsID_tmp  ;
     bp     = bp_tmp    ;
@@ -340,7 +352,7 @@ uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx)
     delete[] LD_tmp;
     return m;
 }
-double logPvalueChisq(double stat)
+double minusLogPvalueChisq(double stat)
 {
     boost::math::inverse_chi_squared_distribution<double> mydist(1);
     double p = boost::math::cdf(mydist,1/(stat));
@@ -405,21 +417,19 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
         if(rangeSize < minBlockSize /2) continue;
         if(rangeSize  - minDim < 0) continue;
         int  startIdx = allGaps[k], endIdx = allGaps[k+1]; 
-        endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] ;
-        //endIdx   =  nextIdx[startIdx] ;
+        endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] +1;
         int notStartInterval = 0, notLastInterval = 1;
+        cout << "M: " << bp.size() << "endIdx: " << endIdx << "rangeSize: " << rangeSize << endl;
         do
         {
             startList.push_back(startIdx), endList.push_back(endIdx);
             if(rangeSize <= endIdx ) notLastInterval = 0;
-            //startIdx =  ceil( (endIdx + startIdx)/2.0 );
             fillStartList.push_back(quaterIdx[startIdx] ); // one quater of dist cutoff away
             fillEndList.push_back(quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ); // three quaters of dist cutoff away
             printf("%d %d %d %d fill:%d\n", rangeSize , 
                     startIdx, endIdx, fillStartList[fillStartList.size()-1], fillEndList[fillEndList.size()-1]);
             startIdx =  quaterIdx[quaterIdx[startIdx] ];
-            //endIdx   =  nextIdx[startIdx] ;
-            endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] ;
+            endIdx   =  quaterIdx[quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ] +1 ;
             //if(endIdx - startIdx > maxBlockSize) endIdx = startIdx + maxBlockSize;
             endIdx   =  rangeSize -  minDim > endIdx ? endIdx: rangeSize;  // This is for the last region.
             notStartInterval  =1;
@@ -611,24 +621,61 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
             
     delete[] LD; 
 
-    ofstream qout (qcFile);
+    ofstream qout (qcFile+".DENTIST.txt");
+    ofstream outLierout (qcFile+".DENTIST.outliers.txt");
     if(doDebug)
     {
-        for (uint i =0; i < zScores.size(); i ++ )
-            qout << impOp.rsIDs[i] << "\t" << impOp.zScores[i] << "\t" 
-                << impOp.imputed[i] << "\t" << impOp.sigma_ii_sq[i] << "\t"
-                << impOp.rsq[i] << "\t" << impOp.ifDup[i] << "\t"<< impOp.zScores_e[i] << endl;
-    }
-    else
-    {
+        double lambda  = 1;
+        if(opt.gcControl)
+        {
+            vector<double> Td;
+            for (uint i =0; i < zScores.size(); i ++ )
+            {
+                double Td_i = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
+                Td.push_back(Td_i);
+            }
+            std::nth_element(Td.begin(), Td.begin() + Td.size()/2, Td.end());
+            lambda =  Td [Td.size()/2]/ 0.46;
+        }
+
         for (uint i =0; i < zScores.size(); i ++ )
         {
             double stat = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
-            qout << impOp.rsIDs[i] << "\t" << stat << "\t" 
-                << logPvalueChisq(stat) << "\t" << impOp.ifDup[i] << endl;
+            qout << impOp.rsIDs[i] << "\t" << impOp.zScores[i] << "\t" 
+                << impOp.imputed[i] << "\t" 
+                << impOp.rsq[i] << "\t" << impOp.ifDup[i] <<"\t" << stat/lambda << endl;
+            if( minusLogPvalueChisq(stat/lambda) > -log10(5e-8))
+            {
+                outLierout  << impOp.rsIDs[i]  << endl;
+            }
+        }
+    }
+    else
+    {
+        double lambda  = 1;
+        if(opt.gcControl)
+        {
+            vector<double> Td;
+            for (uint i =0; i < zScores.size(); i ++ )
+            {
+                double Td_i = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
+                Td.push_back(Td_i);
+            }
+            std::nth_element(Td.begin(), Td.begin() + Td.size()/2, Td.end());
+            lambda =  Td [Td.size()/2]/ 0.46;
+        }
+
+
+                 
+        for (uint i =0; i < zScores.size(); i ++ )
+        {
+            double stat = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
+            qout << impOp.rsIDs[i] << "\t" << stat /lambda << "\t" 
+                <<  minusLogPvalueChisq(stat/lambda) << "\t" << impOp.ifDup[i] << endl;
         }
     }
     qout.close();
+    outLierout.close();
    
 }
 void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int nMarkers, vector<string>& rsIDs,vector<uint>& bp, vector<double>& zScores, vector<long int>& seqNos, vector<bool>& flipped, const Options& opt)
@@ -737,7 +784,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
 
 
 
-void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>& perSNPsampleSize, vector<long int>& seqNo, vector<bool>& toFlip, vector<string>& rsID,vector<uint>& bp )
+void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>& perSNPsampleSize, vector<long int>& seqNo, vector<bool>& toFlip, vector<string>& rsID,vector<uint>& bp, string outFilePrefix )
 {
     printf("[info] Aligning GWAS to bedfile assumming the bfile SNPs are ordered by BP.\n");
     vector<long int> alignToWhich (gtab.size(), -1);
@@ -750,6 +797,10 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
     //for (long int j =0 ; j < btab.rs.size(); j ++)
     int sum = 0;
     auto include_tmp = btab.include;
+    ofstream exclOut (outFilePrefix + ".DENTIST.excluded.txt"); 
+
+    vector<string> msg;
+    msg.push_back("notFoundInReference");
     include_tmp.resize(0);
     for (long int k =0 ; k < btab.include.size(); k ++)
     {
@@ -784,8 +835,14 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
                 include_tmp.push_back(j);
             sum ++;
             } 
+
+            exclOut << btab.rs[j] << "\t" << msg [0] << endl;
         }
+        else
+            exclOut << btab.rs[j] << "\t" << msg [0] << endl;
+
     }
+    exclOut.close();
     printf("[info] %d SNPs (rsID) were shared between the summary and reference data. \n", sum);
     btab.include = include_tmp;
 
@@ -800,7 +857,7 @@ void runImpute(const Options& opt)
     string summmaryFile = opt.summmaryFile;
     string bfileName = opt.bfileName;
     string outPrefix = opt.outPrefix;
-    string impFile = outPrefix + ".ImpG.txt";
+    string impFile = outPrefix  ;
     // read summary
     // gzopen() can be used to read a file which is not in gzip format;
     //   in this case gzread() will directly read from the file without decompression
@@ -895,7 +952,7 @@ void runImpute(const Options& opt)
     }
 
     if(opt.deltaMAF != -1)
-        deltaMAF  (gwasDat, ref, opt.deltaMAF, toFlip, rsID, bp, seqNo, zScore, perSNPsampleSize);
+        deltaMAF  (gwasDat, ref,  opt.deltaMAF, toFlip, rsID, bp, seqNo, zScore, perSNPsampleSize, impFile);
     
 
     if(opt.maxDist != -1) {
@@ -916,7 +973,7 @@ void runQC(const Options& opt)
     string outPrefix = opt.outPrefix;
 
 
-    string qcFile = outPrefix + ".qc.txt";
+    string qcFile = outPrefix;
     // read summary
     // gzopen() can be used to read a file which is not in gzip format;
     //   in this case gzread() will directly read from the file without decompression
@@ -997,10 +1054,10 @@ void runQC(const Options& opt)
     vector<bool> toFlip;
     vector<string> rsID;
     vector<uint> bp;
-    alignGWAS (gwasDat, ref,   zScore, perSNPsampleSize,  seqNo,  toFlip, rsID, bp);
+    alignGWAS (gwasDat, ref,   zScore, perSNPsampleSize,  seqNo,  toFlip, rsID, bp, outPrefix);
 
     if(opt.deltaMAF != -1)
-        deltaMAF  (gwasDat, ref, opt.deltaMAF, toFlip, rsID, bp, seqNo, zScore, perSNPsampleSize);
+        deltaMAF  (gwasDat, ref, opt.deltaMAF, toFlip, rsID, bp, seqNo, zScore, perSNPsampleSize, outPrefix);
     
 
     

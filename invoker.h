@@ -14,7 +14,7 @@ template<class T>  int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nS
 /// 
 /// 
 template<class T> void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e, double pValueThresh,  int* interested, float propSVD, int* ncpus);
+        double* imputedZ, double* rsq, double* zScore_e, double pValueThresh,  int* interested, float propSVD, bool gcControl, int* ncpus);
 
 template<class T> void impute(T* LDmat, uint* markerSize, uint* nSample,
         double* zScore, double* imputedZ, double* rsq, double* zScore_e,
@@ -126,7 +126,7 @@ void runDENTIST( uint nSamples,
     }
     DENTIST<LDType>(resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp,
             imputedZ_tmp, rsq_tmp, zScore_e_tmp, opt.pValueThreshold,
-            &interested, opt.propPCtrunc, &ncpus);
+            &interested, opt.propPCtrunc, opt.gcControl, &ncpus);
     delete[] resultNoDup;
     count =0;
     vector<uint> assignIdx (dupBearer.size() , 0);

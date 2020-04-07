@@ -19,7 +19,7 @@
 
 set -o nounset                              # Treat unset variables as an error
 
-export local="/gpfs1/scratch/90days/uqzzhen4/local/.local"
+export local="/gpfs1/scratch/90days/uqzzhen4/local/.local2/"
 export MKLROOT="/gpfs1/scratch/90days/uqzzhen4/local/intel/compilers_and_libraries/linux/mkl"# GCC settings
 export PATH="$local/bin:$PATH"
 export EIGEN3_INCLUDE_DIR="$local/include/eigen3"
