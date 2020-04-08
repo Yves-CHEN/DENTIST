@@ -1,6 +1,6 @@
 #include "dataTypeDef.h"
-
 #include <bitset>
+
 
 // ******************************************************************************
 /// This calcualting the LD between SNPi and SNPj(missing genotypes) the GCTA way.
@@ -11,9 +11,9 @@
 //   Note the the nonmissing (SNPi & SNPj) is a subset of individuals of 
 //     nonmissing (SNPi), or   nonmissing (SNPj).
 // ******************************************************************************
-
 template <class T>
-int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uint64* theMarkIdx, uint64 sizeOfMarkIdx, uint64* toAvert, int cutoff, int ncpus, T* result, int64 jump)
+int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, uint64* theMarkIdx,
+        uint64 sizeOfMarkIdx, uint64* toAvert, int cutoff, int ncpus, T* result, int64 jump)
 {
     std::cout << nSample << "\t"
               << nMarker << "\t"
@@ -264,48 +264,14 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
             if(i ==0 && j == 1)
                 std::cout << sum_XY/(nKeptSample)  << " " << cov_XY << " " << LD << std::endl;
 
-            if(sizeof(*result) == 1) // char
-            {
-                char aa =  char(LD*250);
-                printf("(%f, %f)\n",LD, (0L |255 & aa)/250.0  );
-                result[sizeOfMarkIdx * i + j] = char(LD * 250);
-                result[sizeOfMarkIdx * j + i] = char(LD * 250);
-            }
-            else if(sizeof(*result) == 2) // short
-            {
-                result[sizeOfMarkIdx * i + j] = short(LD * 1000);
-                result[sizeOfMarkIdx * j + i] = short(LD * 1000);
-            }
-            else
-            {
-                result[sizeOfMarkIdx * i + j] = LD ;
-                result[sizeOfMarkIdx * j + i] = LD ;
-            }
+            saveData<T>(LD, i, j, result, sizeOfMarkIdx);
 
-        }
-    }
+           }
+     }
 
+     setDiag<T>(result, sizeOfMarkIdx);
 
-
-#pragma omp parallel for                                       
-    for (uint64 i = 0; i < sizeOfMarkIdx; i ++)          
-    {                                                          
-         if(sizeof(*result) == 1) // char
-             result[sizeOfMarkIdx * i + i] = T(1 * 250);
-         else if(sizeof(*result) == 2) // short
-             result[sizeOfMarkIdx * i + i] = T(1000); 
-         else
-             result[sizeOfMarkIdx * i + i] = 1; 
-    }                                            
-
-
-    for (uint64 i = 0; i < 10; i ++)          
-    {
-        for (uint64 j = 0; j <10; j ++)          
-            std::cout << result[i*sizeOfMarkIdx + j] << ' ';
-        std::cout << std::endl;
-    }
-  
+ 
 
     delete[] GENO;
     delete[] bufferAllMarkers ;
@@ -529,40 +495,22 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
                 printf("[error] %d - %d \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
                 exit(-1);
             }
-
-            if(sizeof(*result) == 1) // char
-            {
-                char aa =  char(LD*250);
-                printf("(%f, %f)\n",LD, (0L |255 & aa)/250.0  );
-                result[sizeOfMarkIdx * i + j] = char(LD * 250);
-                result[sizeOfMarkIdx * j + i] = char(LD * 250);
-            }
-            else if(sizeof(*result) == 2) // short
-            {
-                result[sizeOfMarkIdx * i + j] = short(LD * 1000);
-                result[sizeOfMarkIdx * j + i] = short(LD * 1000);
-            }
-            else
-            {
-                result[sizeOfMarkIdx * i + j] = LD ;
-                result[sizeOfMarkIdx * j + i] = LD ;
-            }
-
+            saveData<T> (LD, i, j, result, sizeOfMarkIdx);
         }
     }
 
 
 
-#pragma omp parallel for                                       
-    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
-    {                                                          
-         if(sizeof(*result) == 1) // char
-             result[sizeOfMarkIdx * i + i] = T(1 * 250);
-         else if(sizeof(*result) == 2) // short
-             result[sizeOfMarkIdx * i + i] = T(1000); 
-         else
-             result[sizeOfMarkIdx * i + i] = 1; 
-    }                                            
+///#pragma omp parallel for                                       
+///    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
+///    {                                                          
+///         if(sizeof(*result) == 1) // char
+///             result[sizeOfMarkIdx * i + i] = T(1 * 250);
+///         else if(sizeof(*result) == 2) // short
+///             result[sizeOfMarkIdx * i + i] = T(1000); 
+///         else
+///             result[sizeOfMarkIdx * i + i] = 1; 
+///    }                                            
   
 
     delete[] GENO;
@@ -783,44 +731,25 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
                  exit(-1);
              }
 
-             if(sizeof(*result) == 1) // char
-             {
-                 char aa =  char(LD*250);
-                 result[sizeOfMarkIdx * i + j] = char(LD * 250);
-                 result[sizeOfMarkIdx * j + i] = char(LD * 250);
-             }
-             else if(sizeof(*result) == 2) // short
-             {
-                 result[sizeOfMarkIdx * i + j] = short(LD * 10000);
-                 result[sizeOfMarkIdx * j + i] = short(LD * 10000);
-             }
-             else if (std::is_same<T, int>::value) // int
-             {
-                 result[sizeOfMarkIdx * i + j] = int(LD * 1e6);
-                 result[sizeOfMarkIdx * j + i] = int(LD * 1e6);
-             }
-             else
-             {
-                 result[sizeOfMarkIdx * i + j] = LD ;
-                 result[sizeOfMarkIdx * j + i] = LD ;
-             }
+             saveData<T> (LD, i, j, result, sizeOfMarkIdx);
          }
      }
 
+     setDiag<T>(result, sizeOfMarkIdx);
 
 
-#pragma omp parallel for                                       
-    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
-    {                                                          
-        if(sizeof(*result) == 1) // char
-            result[sizeOfMarkIdx * i + i] = char(1 * 250);
-        else if(sizeof(*result) == 2) // short
-            result[sizeOfMarkIdx * i + i] = short(10000); 
-         else if (std::is_same<T, int>::value) // int
-            result[sizeOfMarkIdx * i + i] = T(1000000); 
-        else
-            result[sizeOfMarkIdx * i + i] = 1; 
-    }                                            
+/// #pragma omp parallel for                                       
+///     for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
+///     {                                                          
+///         if(sizeof(*result) == 1) // char
+///             result[sizeOfMarkIdx * i + i] = char(1 * 250);
+///         else if(sizeof(*result) == 2) // short
+///             result[sizeOfMarkIdx * i + i] = short(10000); 
+///          else if (std::is_same<T, int>::value) // int
+///             result[sizeOfMarkIdx * i + i] = T(1000000); 
+///         else
+///             result[sizeOfMarkIdx * i + i] = 1; 
+///     }                                            
   
 
     delete[] GENO;
@@ -929,8 +858,14 @@ int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMa
 }
 
 
-template int _LDFromBfile <short> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, short* result, int* jump, int* withNA);
 template int _LDFromBfile <int> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, int* result, int* jump, int* withNA);
 template int _LDFromBfile <float> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, float* result, int* jump, int* withNA);
 template int _LDFromBfile <double> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,double* result, int* jump, int* withNA);
+
+template int _LDFromBfile <smatrix_d > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_d* result, int* jump, int* withNA);
+template int _LDFromBfile <smatrix_f > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_f* result, int* jump, int* withNA);
+template int _LDFromBfile <smatrix_i > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_i* result, int* jump, int* withNA);
+
+
+
 

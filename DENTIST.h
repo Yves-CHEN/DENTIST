@@ -22,10 +22,6 @@ using namespace std;
 
 
 
-
-
-
-
 class GWAS
 {
 public:
@@ -319,7 +315,28 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
 
 
 }
-
+/// 
+/// // this different from moveKeep by creating a tmp matrix store the previous dat
+/// //  before coping dat to LD mat. This avoid reading and writing from the same
+/// //  LD mat, which can lead to problems when arrSize < currentDim.
+/// template<class T>
+/// uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx)
+/// {
+///     if(long(arrSize)  - long(keepFromIdx) <= 0) return 0;
+///     uint tmp_dim = arrSize  - keepFromIdx;
+///     double* LD_tmp = new double [tmp_dim * tmp_dim];
+///     for (uint i = keepFromIdx, m=0; i < arrSize ; i ++, m ++ )
+///         for (uint j = keepFromIdx, n = 0; j < arrSize ; j ++, n ++ )
+///             LD_tmp[m *  tmp_dim + n ] = LD[i * arrSize + j];
+///     uint m = 0;
+///     for (m = 0; m < tmp_dim; m ++ )
+///         for (uint n = 0; n < tmp_dim;  n ++ )
+///             LD[m *  currentDim + n ] = LD_tmp[m * tmp_dim + n];
+///     delete[] LD_tmp;
+///     return m;
+/// }
+/// 
+/// 
 
 
 uint moveKeep(double* LD, uint arrSize, uint currentDim, uint keepFromIdx)
@@ -333,25 +350,6 @@ uint moveKeep(double* LD, uint arrSize, uint currentDim, uint keepFromIdx)
 
 
 
-// this different from moveKeep by creating a tmp matrix store the previous dat
-//  before coping dat to LD mat. This avoid reading and writing from the same
-//  LD mat, which can lead to problems when arrSize < currentDim.
-template<class T>
-uint moveKeepProtect(T* LD, uint arrSize, uint currentDim, uint keepFromIdx)
-{
-    if(long(arrSize)  - long(keepFromIdx) <= 0) return 0;
-    uint tmp_dim = arrSize  - keepFromIdx;
-    double* LD_tmp = new double [tmp_dim * tmp_dim];
-    for (uint i = keepFromIdx, m=0; i < arrSize ; i ++, m ++ )
-        for (uint j = keepFromIdx, n = 0; j < arrSize ; j ++, n ++ )
-            LD_tmp[m *  tmp_dim + n ] = LD[i * arrSize + j];
-    uint m = 0;
-    for (m = 0; m < tmp_dim; m ++ )
-        for (uint n = 0; n < tmp_dim;  n ++ )
-            LD[m *  currentDim + n ] = LD_tmp[m * tmp_dim + n];
-    delete[] LD_tmp;
-    return m;
-}
 double minusLogPvalueChisq(double stat)
 {
     boost::math::inverse_chi_squared_distribution<double> mydist(1);
@@ -491,7 +489,8 @@ public:
 
 };
 
-void loadLDFromBLD (string bldLDFile, uint* seqNos, vector<bool>& flipped, uint startIdx, uint endIdx, LDType* LD)
+template<class T>
+void loadLDFromBLD (string bldLDFile, uint* seqNos, vector<bool>& flipped, uint startIdx, uint endIdx, T* LD)
 {
 
     bool ifPrint = false;
@@ -515,9 +514,7 @@ void loadLDFromBLD (string bldLDFile, uint* seqNos, vector<bool>& flipped, uint 
         for (uint j =0; j < rtSeqNos.size(); j ++)
         {
             int sign = toAvert[i] * toAvert[j];
-            LD [i * rtSeqNos.size() + j]
-                = LDFromFile [rtSeqNos[i] * dim + rtSeqNos[j] ] *sign ;
-                       
+            saveData<T>(LDFromFile [rtSeqNos[i] * dim + rtSeqNos[j] ] *sign, i, j,LD, rtSeqNos.size());
         }
     }
     delete[] LDFromFile;
@@ -566,7 +563,8 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
     int nKept = 0;
     uint theMaxDim = (opt.maxDim + opt.minDim);
 
-    LDType* LD = new LDType[  theMaxDim *  theMaxDim]();
+    //LDType* LD = new LDType[  theMaxDim *  theMaxDim]();
+    LDType2* LD = createStorage<LDType2>(long(theMaxDim));
     for (uint k = 0; k < startList.size(); k ++ )
     {
         uint startIdx = startList[k], endIdx   =   endList[k];
@@ -579,7 +577,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
         cout << endIdx << ", "<< startIdx<< endl;
         printf("..%.1f%%", k*100.0 / startList.size());
         if(!opt.loadLD )
-            nKept = moveKeepProtect<LDType>( LD, preDim, endIdx - startIdx,
+            nKept = moveKeepProtect<LDType2>( LD, preDim, endIdx - startIdx,
                     startIdx - pre_start); // reUse LD part
         bool performed = true;
         if((endIdx - startIdx) > minDim/5 )
@@ -587,24 +585,26 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
             int withNA = opt.withNA;
             int cutoff = endIdx - startIdx +1;
             uint arrSize = endIdx - startIdx;
+            resize(LD, endIdx-startIdx);
             if(!readLD)
-                _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, 
+                _LDFromBfile <LDType2>(&head, &nMarkers, &nSamples, 
                        impOp.seqNos + startIdx, &arrSize, 
                        impOp.toAvert + startIdx, &cutoff,
                        &thread_num, LD, &nKept, &(withNA));
             else 
-                loadLDFromBLD(bfileName, impOp.seqNos, flipped, startIdx, endIdx, LD);
+                loadLDFromBLD<LDType2>(bfileName, impOp.seqNos, flipped, startIdx, endIdx, LD);
+            
             if(opt.doImpute)
-                runImpute( nSamples,
+                runImpute<LDType2>( nSamples,
                      impOp.zScores + startIdx,
                      cutoff, thread_num,
                      impOp.imputed, impOp.rsq, impOp.zScores_e, impOp.ifDup,
-                    startIdx, fillStartIdx, fillEndIdx, LD,  opt);
+                     startIdx, fillStartIdx, fillEndIdx, LD,  opt);
             if(opt.doQC)
             {
-                for (uint i =0; i < arrSize; i ++)
-                    LD[i*arrSize + i] =  1;
-                runDENTIST( nSamples,
+                //for (uint i =0; i < arrSize; i ++)
+                //    LD[i*arrSize + i] =  1;
+                runDENTIST<LDType2>( nSamples,
                      impOp.zScores + startIdx,
                      cutoff, thread_num,
                      impOp.imputed, impOp.rsq, impOp.zScores_e, impOp.ifDup,
@@ -619,7 +619,8 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
     cout << endl;
 
             
-    delete[] LD; 
+    //delete[] LD; 
+    deleteStorage<LDType2>(LD);
 
     ofstream qout (qcFile+".DENTIST.txt");
     ofstream outLierout (qcFile+".DENTIST.outliers.txt");
@@ -852,7 +853,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
 
 
 
-void runImpute(const Options& opt)
+void runSummaryImpute(const Options& opt)
 {
     string summmaryFile = opt.summmaryFile;
     string bfileName = opt.bfileName;

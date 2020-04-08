@@ -47,7 +47,7 @@ cout << "*******************************************************************" <<
                             opt.maxDist, opt.thread_num);
     }
     if(opt.doImpute && opt.summmaryFile != "" && opt.bfileName != "")
-        runImpute(opt);
+        runSummaryImpute(opt);
 
     if(opt.doQC && opt.summmaryFile != "" && opt.bfileName != "")
         runQC(opt);

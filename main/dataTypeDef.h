@@ -23,6 +23,7 @@
 #include <numeric>
 #include <algorithm>
 #include <Eigen/Dense> 
+#include "storage.h"
 
 
 // This defines the processing of bfile binnary in single bype / double byte.

@@ -1,5 +1,5 @@
 # Directory of the target
-OUTPUT = ../lib/libLDinspect.a
+OUTPUT = ./lib/libLDinspect.a
 #
 # # Compiler
 CXX = g++
@@ -22,6 +22,7 @@ HDR += *.h
 
 
 SRC =  bfileOperations.cpp \
+	storage.cpp \
 	calInversion.tests.cpp \
 	fastIO.cpp             \
 	getGeno.cpp            \
@@ -75,7 +76,7 @@ run :
 
 install:
 	#cp lib/libLDinspect.a /home/uqwche11/work/SMR_source/smr0.866/lib/
-	cp lib/libLDinspect.a  ../DENTIST/lib/
+	cp lib/libLDinspect.a  ../lib/
 
 test:
 	for dir in $(SUBDIRS); do \
