@@ -23,7 +23,7 @@ using namespace std;
 
 //typedef  float LDType;
 typedef  double LDType;
-typedef  boost::numeric::ublas::symmetric_matrix<float, boost::numeric::ublas::upper> LDType2;
+typedef  boost::numeric::ublas::symmetric_matrix<double, boost::numeric::ublas::upper> LDType2;
 
 
 const uint maxSummaryRowSize = 1000000;
