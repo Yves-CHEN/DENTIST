@@ -43,13 +43,14 @@ cout << "*******************************************************************" <<
 
     if( opt.doWrite)
     {
-        saveLD<int>(opt.bfileName, opt.outPrefix.c_str(), 
-                            opt.maxDist, opt.thread_num);
+//        saveLD<int>(opt.bfileName, opt.outPrefix.c_str(), 
+//                            opt.maxDist, opt.thread_num);
+        saveLD<int>(opt);
     }
     if(opt.doImpute && opt.summmaryFile != "" && opt.bfileName != "")
         runSummaryImpute(opt);
 
-    if(opt.doQC && opt.summmaryFile != "" && opt.bfileName != "")
+    if(opt.doQC && opt.summmaryFile != "" )
         runQC(opt);
 
     return 0;

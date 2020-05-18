@@ -7,6 +7,7 @@
 
 typedef  unsigned char  uchar ;
 
+
 class BedFile
 {
 public:
@@ -27,6 +28,16 @@ public:
     vector<double> calcMaf (string bfileName, long int N, long int M, uint ncpus);
     BedFile(string bfileName, float maf, uint ncpus);
     BedFile(string bfileName);
+    inline BedFile() {};
+    inline  string print(uint i) const 
+    {
+        assert(i<include.size());
+        int j = include[i];
+        string output = (chrID[j]) + "\t" +(rs[j])  + "\t" + to_string(geneticDist[j]) + "\t"
+            + to_string(bp[j])  + "\t" + (A1[j])  + "\t" +(A2[j])  ;
+        return output;
+
+    };
 
 
 
@@ -99,11 +110,12 @@ BedFile::BedFile(string  bfileName )
     while (getline(fin, line)) N++;
     fin.close();
     this->N = N;
-    for (uint i = 0; i < this->maf.size(); i ++)
+    this->maf = calcMaf (bfileName, N, M, ncpus);
+    for (uint i = 0; i < this->bp.size(); i ++)
         this->include.push_back(i);
 
-    this->maf = calcMaf (bfileName, N, M, ncpus);
 
+    
 
 };
 
@@ -341,11 +353,111 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
         delete [] GENO;
     }
 
+
     return maf;
 
 };
 
 
+class BLDFILE : public BedFile
+{
+    uint LDwindSize;
+    uint elementInBypes;
+public:
+    BLDFILE (string filename);
+
+};
+
+BLDFILE::BLDFILE (string filename)
+        :BedFile() 
+{
+
+    string idxFile = filename+ ".ridx";
+    ifstream Bim(idxFile.c_str());
+
+    if(!Bim.good()) printf( "[error] [%s] not found.\n", idxFile.c_str());
+    int ibuf = 0;
+    string cbuf = "0";
+    double dbuf = 0.0;
+    string str_buf;
+    long int rowNum = 0;
+    int ncpus = 1;
+
+    moganMissing = false;
+    int p_bp = -1;
+    while (Bim) 
+    {
+        Bim >> str_buf;
+        if (Bim.eof()) break;
+        this->chrID.push_back( str_buf);
+        Bim >> str_buf;
+        this->rs.push_back(str_buf);
+        Bim >> dbuf;
+        this->geneticDist.push_back(dbuf);
+        Bim >> ibuf;
+        this->bp.push_back(ibuf);
+        if(ibuf >= p_bp) // ordered bp is expected
+            p_bp = ibuf;
+        else
+            break;
+        Bim >> cbuf;
+        to_upper(cbuf);
+        this->A1.push_back(cbuf.c_str());
+        Bim >> cbuf;
+        to_upper(cbuf);
+        this->A2.push_back(cbuf.c_str());
+        this->seqNo.push_back(rowNum);
+        rowNum  ++;
+
+        int throwaway;
+        Bim >> throwaway >> throwaway >> throwaway;
+
+        // disregard the idx information for now
+        //cin.ignore (std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+    Bim.close();
+    if(ibuf < p_bp)
+    {
+        cout << "[error] The BLD file should ordered by bp and it should be per-chromosome file than genomewide." << endl;
+        assert( ibuf >= p_bp );
+    }
+    uint dist = this->bp[ this->bp.size() -1] - this->bp[ 0];
+    if(dist> 5e-6 && this->geneticDist[this->bp.size() -1] == 0 ) // warning mogan missing, if last - first > 5Mb, but the mogan is 0
+    {
+        moganMissing = true;
+        cout << "[warning] mogan is like to be missing, but it will only be a problem when calling for it." << endl;
+    }
+
+    M = this -> rs.size();
+    // string famFile = bfileName + ".fam";
+    // ifstream fin(famFile.c_str());
+    // int N = 0;
+    // string line;
+    // while (getline(fin, line)) N++;
+    // fin.close();
+    // this->N = N;
+    // this->maf = calcMaf (bfileName, N, M, ncpus);
+    cout << "parsing BLD" << endl;
+
+    for (uint i = 0; i < this->bp.size(); i ++)
+    {
+        this->include.push_back(i);
+    }
+
+
+    FILE*  datFile      = fopen((filename+".bld").c_str(), "r");
+    // ----------------------------------------------------------------------------
+    // read header save in integer (4bytes)
+    int headerInfo [5] = {}; // fileSubtype, N, M, LDwindSize, LD in number of Bytes
+    fread (headerInfo,  sizeof(int), 5 ,datFile);
+
+    fclose(datFile);
+    this -> N = headerInfo[1];
+    LDwindSize = headerInfo[3];
+    elementInBypes = headerInfo[4];
+
+
+};
 
 #endif  // __BFILE__
 

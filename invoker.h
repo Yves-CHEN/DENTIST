@@ -66,7 +66,6 @@ void runDENTIST( uint nSamples,
         int thePos, int startIdx, int endIdx, T* result,
         const Options& opt)
 {
-    cout << "RunDENTIST" << endl;
 
     uint    arrSize    = cutoff -1;
     double* zScores    = the_zScores  ;
@@ -74,9 +73,7 @@ void runDENTIST( uint nSamples,
     vector<int>    dupBearer( arrSize, -1);
     vector<double> corABS( arrSize, -1);
     vector<int>    sign( arrSize, 1);
-    cout << "RunDENTIST" << endl;
     findDup<T>(result, rThreshold,  dupBearer, corABS, sign);
-    cout << "RunDENTIST" << endl;
     uint sum =0;
     for (int i =0; i < dupBearer.size(); i ++)
         sum += (dupBearer[i] !=-1);
@@ -88,9 +85,7 @@ void runDENTIST( uint nSamples,
     double*  zScore_e_tmp = new double[ arrSize]() ;
     uint      arrSize_tmp = arrSize - sum;
     //LDType* resultNoDup = new LDType[ arrSize * arrSize]() ;
-    cout << "RunDENTIST" << endl;
     T* resultNoDup = createStorage<T>(long(arrSize_tmp));
-    cout << "RunDENTIST" << endl;
 
     int count =0;
     for (uint i = 0; i < dupBearer.size(); i ++)
@@ -122,7 +117,6 @@ void runDENTIST( uint nSamples,
         else
             assignIdx[i] = dupBearer[i];
     }
-    cout << "assigning"  << endl;
     for (uint i =startIdx; i < endIdx; i ++)
     {
         if(i - thePos > dupBearer.size()) stop("[error] function runDENTIST"); 
@@ -135,7 +129,6 @@ void runDENTIST( uint nSamples,
         ifDup[i]     = dupBearer[i - thePos] != -1 ;
     }
 
-    cout << "assigning"  << endl;
     delete[]  zScores_tmp;
     delete[] imputedZ_tmp;
     delete[]      rsq_tmp;

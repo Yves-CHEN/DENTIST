@@ -287,6 +287,12 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
 
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(VV);
     D(printf("Eigen decomposition is done." ););
+    clock_gettime(CLOCK_MONOTONIC, &finish);
+    elapsed = (finish.tv_sec - start.tv_sec);
+    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+    D(printf("[info] Time elapsed is %f. \n", elapsed ););
+
     int nRank = es.eigenvectors().rows();
     int nZeros = 0;
     for (int j=0; j<nRank; j++) 
@@ -328,10 +334,6 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
         //if(rsqList [idx2[i]]  >0.7) imputedZ[idx2[i]] /= sqrt(rsqList [idx2[i]] );
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &finish);
-    elapsed = (finish.tv_sec - start.tv_sec);
-    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    D(printf("[info] Time elapsed is %f. \n", elapsed ););
 
 
 

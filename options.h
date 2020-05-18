@@ -218,7 +218,6 @@ void Options::parseOptions(int nArgs, char* option_str[])
     {
         if(strcmp(option_str[i], "--load-LD") == 0)
         {
-            this->doQC  = false;
             loadLD = true;
             if(i+1 < nArgs)
                 Options::bool_FLAG_VALID_CK(string("--load-LD"), option_str[i+1]);
