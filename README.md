@@ -73,3 +73,8 @@ Specifies the number of threads for parallel computing, given that DENTIST is po
 > \-\-num-iterations \<number of iterations\>
 
 Specifies the number of iterations for z-score consistency test (see Method). A large value increases the cost of computation, but a smaller value can reduce the accuracy and increase the false discovery rate. We experimented with this parameter and set it to a default value of 10, which presents the best trade-off.
+
+
+> \-\-delta-MAF \<threshold\>
+
+Specifies the threshold for the acceptable differences in MAFs between a reference sample and a summary data. This filter is not applied by default. The usually used thresholds include 0.1 and 0.2.
