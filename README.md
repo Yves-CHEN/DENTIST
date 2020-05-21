@@ -13,6 +13,7 @@ In progress.
 # Downloads
 ### Pre-compiled Executable Files 
 The executable file below is compiled with "-static", and tested on 64-bit Linux distributions on the x86\_64 CPU platform.
+
 Linux: [DENTIST  0.8.0.1](https://drive.google.com/open?id=1BYC3SDim9NBfjyYmWsXRGJcZVCUQh6_o)
 
 # Basic usage
