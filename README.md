@@ -51,7 +51,7 @@ rs131538    0.012   0.91       0
 rs140378    14.4    2          0
 ...
 ```
-For each variants,  the first column specifies the rsID, followed by the QC test statistics (which is a chi-square statistics), the p-value of the test statistics in -log10 (*) and a indicator of whether the variant is in strong correlation (|r| > 0.99) with any other variant, 0 for none is found and 1 for at least one is found.
+For each variants,  the first column specifies the rsID, followed by the QC test statistics used in DENTIST (which is a $\chi^2$ test), the p-value of the test statistics in -log10 (*) and a indicator of whether the variant is in strong correlation (|r| > 0.99) with any other variant, 0 for none is found and 1 for at least one is found.
 
 # Parameters
 > \-\-target \<rsID\>
