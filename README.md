@@ -12,7 +12,8 @@ In progress.
 
 # Downloads
 ### Pre-compiled Executable Files 
-Linux: [DENTIST  0.9.0.1](https://drive.google.com/open?id=1ckdAatnlG3xjnnsy_L7tP3HuskzO595d)
+The executable file below is compiled with "-static", and tested on 64-bit Linux distributions on the x86\_64 CPU platform.
+Linux: [DENTIST  0.8.0.1](https://drive.google.com/open?id=1BYC3SDim9NBfjyYmWsXRGJcZVCUQh6_o)
 
 # Basic usage
 Note that the words starting with a $ sign are bash variables. The bash syntax can be found [here](https://linuxconfig.org/bash-scripting-tutorial-for-beginners).
