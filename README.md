@@ -1,32 +1,29 @@
 # Overview
-DENTIST (Detecting Errors iN analyses of summary staTISTics) is a QC tool for summary-data-based analyses, given that such analyses based on summary statistics from association studies are susceptible to errors in summary statistics either originated from genotyping/imputation errors or other artifacts and  data heterogeneity as out-of-sample LD is usually used to approximate the in-sample LD. Our paper has summarized the effects of errors and data heterogeneity on commonly used analyses ( [GCTA COJO](https://cnsgenomics.com/software/gcta/#COJO),   [SMR HEIDI test](https://cnsgenomics.com/software/smr/#SMR&HEIDIanalysis),     [LD score regression]( https://github.com/bulik/ldsc) ), and how much improvement can be attained using DENTIST-based QC.
+DENTIST (Detecting Errors iN analyses of summary staTISTics) is a quality control (QC) tool for summary-level data from genome-wide association studies (GWASs). It leverages the difference between the observed GWAS test-statistic of a variant and its predicted value (using the neighbouring variants and linkage equilibrium (LD) data from a reference panel) to remove problematic variants. It can detect genotyping/imputation errors in either the original GWAS or the LD reference samples, allelic errors (i.e., the effect alleles of the variants are mislabelled) in the GWAS summary data, as well as heterogeneity between the GWAS and LD reference samples. Note that DENTIST can also be used in GWAS with individual-level data to remove problematic variants not flagged by the conventional QCs, such as Hardy Weinberg Equilibrium (HWE) test. As shown in [our paper](#Citations), DENTIST can significantly improve the performance of the summary-data based conditional and jointly association analysis (COJO; Yang et al. 2012 Nat Genet) especially for rare variants. It can also improve the performance of LD score regression (LDSC; Builk-Sulivant et al. 2015 Nat Genet) and SMR-HEIDI (Zhu et al. 2015 Nat Genet). We believe that DENTIST can in principle work for all analyses that use GWAS summary data, although this has not been tested extensively. 
 
 # Credits
-The method is designed by Wenhan Chen, Zhihong Zhu and Jian Yang. The software is implemented and maintained by Wenhan Chen.  The idea of the LD consistency test is based on a previous study [PubMed ID: 24990607]. 
+The method is developed by Wenhan Chen, Zhihong Zhu and [Jian Yang](https://publons.com/researcher/2848531/jian-yang/) in the Yang Lab at The University of Queensland. The software is programmed and maintained by Wenhan Chen.
 
 # Questions and Help Requests
-If you meet any bugs or questions, please send an email to [Wenhan Chen](mailto:uqwche11@uq.edu.au) or [Jian Yang](mailto:jian.yang@uq.edu.au).
+If you meet any bugs or questions, please send an email to [Wenhan Chen](mailto:uqwche11@uq.edu.au) or [Jian Yang](mailto:jian.yang.qt@gmail.com).
 
 # Citations
-In progress.
+Chen et al. (2020) Improved analyses of GWAS summary statistics by eliminating heterogeneity and errors in data. bioRxiv.
 
 # Downloads
 ### Pre-compiled Executable Files 
-The executable file below is compiled with "-static", and tested on 64-bit Linux distributions on the x86\_64 CPU platform.
-
-Linux: [DENTIST  0.8.0.1](https://drive.google.com/open?id=1BYC3SDim9NBfjyYmWsXRGJcZVCUQh6_o)
+The executable file below is compiled with "-static" and tested on 64-bit Linux distributions on the x86_64 CPU platform.
+Linux: [DENTIST  0.9.0.1](https://drive.google.com/open?id=1ckdAatnlG3xjnnsy_L7tP3HuskzO595d)
 
 # Basic usage
-Note that the words starting with a $ sign are bash variables. The bash syntax can be found [here](https://linuxconfig.org/bash-scripting-tutorial-for-beginners).
+To run DENTIST with essential parameters,
+> DENTIST --gwas-summary summary_data --bfile ref --out prefix
 
-To Run DENTIST with essential parameters,
-> DENTIST --gwas-summary $summary --bfile $ref --out $filePrefix
+To specify the number of CPUs,
+> DENTIST --gwas-summary summary_data --bfile ref --out prefix --thread-num 10
 
-To specify the number of cpus,
-> DENTIST --gwas-summary $summary --bfile $ref --out $filePrefix   --thread-num $ncpus
-
-To run at a target region specified by the a rsID (e.g. rs1234),
->DENTIST --gwas-summary $summary --bfile $ref --out $filePrefix --thread-num $ncpus --target $rsID
+To run at a targeted region specified by the rsID of variant (e.g. rs1234),
+>DENTIST --gwas-summary summary_data --bfile ref --out prefix --thread-num 10 --target rs1234
 
 
 # Input and output
@@ -37,7 +34,7 @@ Reads individual-level genotype data in PLINK bed format, e.g. test.fam, test.bi
 
 > \-\-gwas-summary \<summary statistics in GCTA-COJO format\>
 
-Reads GWAS summary data in in GCTA-COJO format.  Format of the GCTA-COJO file is like this,
+Reads GWAS summary data in in GCTA-COJO format (see below for an example).
 ```
 SNP A1 A2 freq beta se p N
 rs131538 A G 0.05 0.007 0.02 0.7 6000
@@ -46,37 +43,36 @@ rs140378 C G 0.05 0.007 0.02 0.7 6000
 ```
 > \-\-out \<the output file prefix\>
 
-Specifies the prefix of output file. The output of the QC test statistics is in the following format,
+Specifies the prefix of the output file. The output of DENTIST is in the following format.
 ```
 rsID        chisq   -log10(P)  ifDup
 rs131538    0.012   0.91       0
 rs140378    14.4    2          0
 ...
 ```
-For each variants,  the first column specifies the rsID, followed by the QC test statistics used in DENTIST (which is a $\chi^2$ test), the p-value of the test statistics in -log10 (*) and a indicator of whether the variant is in strong correlation (|r| > 0.99) with any other variant, 0 for none is found and 1 for at least one is found.
+For each variant, the first column shows the rsID, followed by the DENTIST test statistic (follows a $\chi^2$ distribution with 1 degree of freedom under the null), and the corresponding $-log_{10}(p-value)$ . The last column is an indicator of whether the variant is in strong LD (|r| > 0.99) with any other variants, 0 for none and 1 for at least one.
+
 
 # Parameters
 > \-\-target \<rsID\>
 
-Is trailed by an rsID to specify a region of 20Mb of interest centered at position specified by rsID. The rsID should present in the Plink bed file. A warning is reported if the target rsID is not found and DENTIST will run across the chromosome rather than the specified regions by --target. Notably, the locating of this rsID in the bfile is performed before --maf flag.
+Specifies a region of 20 Mb centred at a position specified by rsID. The rsID should be present in the PLINK bim file. A warning will be reported if the target rsID is not found, and DENTIST will run across the chromosome rather than the specified region.
 
 > \-\-maf \<minimal MAF threshold\>
 
-Specifies the MAF threshold, so that markers from the bfile with a MAF smaller than this value would be precluded from the analysis. This exclusion is performed after --target.
+Specifies a MAF threshold so that variants with MAFs smaller than this value will be precluded from the analysis. Note that this exclusion is performed after --target.
 
 > \-\-wind-dist \<window size\>
 
-Is trailed by sliding window size measured in the number of base pairs. The default value is 2000000 base pairs. This is the default option unless overruled by --wind.
-
+Specifies the size of a sliding window (in bp units). The default value is 2000000 bp.
 > \-\-thread-num \<ncpus\>
 
-Specifies the number of threads for parallel computing, given that DENTIST is powered by OpenMP. The default value is 1.
+Specifies the number of threads for parallel computing using OpenMP. The default value is 1.
 
 > \-\-num-iterations \<number of iterations\>
 
-Specifies the number of iterations for z-score consistency test (see Method). A large value increases the cost of computation, but a smaller value can reduce the accuracy and increase the false discovery rate. We experimented with this parameter and set it to a default value of 10, which presents the best trade-off.
-
+Specifies the number of iterations in the DENTIST analysis (see Method). A too large value will increase the computational costs and a too small value will increase the false discovery rate. We have experimented with this parameter and set a default value of 10 for a good trade-off.
 
 > \-\-delta-MAF \<threshold\>
 
-Specifies the threshold for the acceptable differences in MAFs between a reference sample and a summary data. This filter is not applied by default. The usually used thresholds include 0.1 and 0.2.
+Specifies a threshold for variants with MAF differences between the GWAS summary and LD reference data set. This filter is not applied by default. The commonly used thresholds include 0.1 and 0.2.
