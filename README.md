@@ -22,7 +22,7 @@ To run DENTIST with essential parameters,
 To specify the number of CPUs,
 > DENTIST --gwas-summary summary_data --bfile ref --out prefix --thread-num 10
 
-To run at a targeted region specified by the rsID of variant (e.g. rs1234),
+To run DENTIST at a targeted region specified by the rsID of variant (e.g. rs1234),
 >DENTIST --gwas-summary summary_data --bfile ref --out prefix --thread-num 10 --target rs1234
 
 
@@ -50,7 +50,7 @@ rs131538    0.012   0.91       0
 rs140378    14.4    2          0
 ...
 ```
-For each variant, the first column shows the rsID, followed by the DENTIST test statistic (follows a $\chi^2$ distribution with 1 degree of freedom under the null), and the corresponding $-log_{10}(p-value)$ . The last column is an indicator of whether the variant is in strong LD (|r| > 0.99) with any other variants, 0 for none and 1 for at least one.
+For each variant, the first column shows the rsID, followed by the DENTIST test statistic (follows a <img src="https://render.githubusercontent.com/render/math?math=\chi^2"> distribution with 1 degree of freedom under the null), and the corresponding <img src="https://render.githubusercontent.com/render/math?math=-log_{10}(p-value)">. The last column is an indicator of whether the variant is in strong LD (|r| > 0.99) with any other variants, 0 for none and 1 for at least one.
 
 
 # Parameters
@@ -71,8 +71,10 @@ Specifies the number of threads for parallel computing using OpenMP. The default
 
 > \-\-num-iterations \<number of iterations\>
 
-Specifies the number of iterations in the DENTIST analysis (see Method). A too large value will increase the computational costs and a too small value will increase the false discovery rate. We have experimented with this parameter and set a default value of 10 for a good trade-off.
+Specifies the number of iterations in the DENTIST analysis (see the Methods section of [our paper](#Citations)). A too large value will increase the computational costs and a too small value will increase the false discovery rate. We have experimented with this parameter and set a default value of 10 for a good trade-off.
 
 > \-\-delta-MAF \<threshold\>
 
 Specifies a threshold for variants with MAF differences between the GWAS summary and LD reference data set. This filter is not applied by default. The commonly used thresholds include 0.1 and 0.2.
+
+
