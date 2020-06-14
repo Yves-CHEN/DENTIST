@@ -536,7 +536,7 @@ void impute(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 template <class T>
 void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
-        int* interested, float propSVD, bool gcControl, int* ncpus)
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus)
 {
  
     //double internalControl = 5.45;
@@ -567,7 +567,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
     std::vector<double> diff;
 
     //for (uint t =0; t < 1; t ++)
-    for (uint t =0; t < 8; t ++)
+    for (uint t =0; t < nIter; t ++)
     {
         std::vector<uint> idx2_QCed;
         std::vector<size_t> fullIdx_tmp;
@@ -654,22 +654,22 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 // instantiate T into float
 template void DENTIST <float>(float* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
 
 
 template void  DENTIST<double >(double* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
 
 template void DENTIST <smatrix_d >(smatrix_d* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
 template void DENTIST <smatrix_f >(smatrix_f* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
 template void DENTIST <smatrix_i >(smatrix_i* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
 
 
 
