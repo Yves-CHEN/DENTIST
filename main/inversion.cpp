@@ -2,7 +2,8 @@
 #include "utils.h"
 #include "stats/FDR.h"
 #include <Eigen/Dense> 
-#include <boost/math/distributions/inverse_chi_squared.hpp>
+// #include <boost/math/distributions/inverse_chi_squared.hpp>
+#include <boost/math/distributions/chi_squared.hpp>
 
 
 
@@ -360,12 +361,23 @@ void testSymetry(double* LDmat, uint* markerSize)
         }
 }
 
-double logPvalueChisq1(double stat)
+//double logPvalueChisq1(double stat)
+//{
+//    boost::math::inverse_chi_squared_distribution<double> mydist(1);
+//    double p = boost::math::cdf(mydist,1/(stat));
+//    return ( -log10(p) ) ;
+//}
+//
+
+
+double minusLogPvalueChisq2(double stat)
 {
-    boost::math::inverse_chi_squared_distribution<double> mydist(1);
-    double p = boost::math::cdf(mydist,1/(stat));
+    boost::math::chi_squared_distribution<double> mydist(1);
+    double p = boost::math::cdf( boost::math::complement(mydist, stat) );
     return ( -log10(p) ) ;
 }
+
+
 
 
 // void  regularizeLD (double* LDmat, int markerSize)
@@ -613,12 +625,12 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         {
             if(gcControl == true)
             {
-                if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] /inflationFactor  ) >  -log10(pValueThreshold)) ) 
+                if( !(diff[i] > threshold && minusLogPvalueChisq2(  diff[i] * diff[i] /inflationFactor  ) >  -log10(pValueThreshold)) ) 
                     fullIdx_tmp.push_back(fullIdx[i]);
             } 
             else
             {
-                if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
+                if( !(diff[i] > threshold && minusLogPvalueChisq2(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
                     fullIdx_tmp.push_back(fullIdx[i]);
             }
         }
