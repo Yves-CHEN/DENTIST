@@ -44,6 +44,7 @@ extern "C"
                 printf( "        the solution could not be computed.\n" );
                 exit(-1);
         }
+        return 0;
     }
 }
 
@@ -172,8 +173,7 @@ bool printMat (double* mat, int nrow, int ncol)
         printf("\n");
     }
     printf("----------------------------------------\n");
-
-
+    return 0;
 }
 
 
@@ -601,7 +601,6 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             //     idx.push_back(idx2[i]);
         }
         oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, propSVD, ncpus);
-        D(printf("%d, %d\n", idx.size(), idx2.size()););
         diff.resize(fullIdx.size());
 
         for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[fullIdx[i]]);
@@ -645,7 +644,6 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             else
                 idx2.push_back(fullIdx[i]);
         }
-        D(printf("%d, %d\n", idx.size(), idx2.size());)
     }
 
     // //  Rescue

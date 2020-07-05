@@ -7,9 +7,9 @@ int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, 
 
     const int individualsPerByte = 4;
 
-    uint perMakerSize = ceil ( (nSample) / 1.0 / individualsPerByte  );
+    int64 perMakerSize = ceil ( (nSample) / 1.0 / individualsPerByte  );
     uint nBlanks   = ( 4 - (nSample) % individualsPerByte  ) % individualsPerByte; //
-    long lSize =0;
+    int64 lSize =0;
     /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes in older version.
     int const nByteHeader = 9;
     uchar headerCoding[nByteHeader +1 ] = { 0x6c, 0x1b, 0x01, 0xdc, 0x0f, 0xe7, 0x0f, 0x6b, 0x01};
@@ -32,12 +32,12 @@ int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, 
     /// This checks the version of bed file. Examine if there is damage to
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
-    fread (&headerBuf,1, nByteHeader, bedFileReader);
+    size_t ret = fread (&headerBuf,1, nByteHeader, bedFileReader);
     if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info] This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
     if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
     if(lSize  != long(perMakerSize * nMarker + nThrowAway) )
     {
-        printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n", lSize, perMakerSize * nMarker + nThrowAway, perMakerSize, nMarker);
+        printf("[error] The size of bedFile %lld is inconsistenty with the estimated %lld based on %lld samples and %ld markers. \n", lSize, perMakerSize * nMarker + nThrowAway, perMakerSize, nMarker);
     }
 
 
@@ -45,7 +45,7 @@ int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, 
     uchar* bufferAllMarkers = new unsigned char [loadSize ];
     printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
     fseek (bedFileReader , perMakerSize * sizeof(char) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
-    fread (bufferAllMarkers, 1, loadSize, bedFileReader);
+    ret = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
 
 
     uchar* bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
@@ -71,6 +71,7 @@ int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, 
 
     }
 
+    return 0;
 }
 
 
