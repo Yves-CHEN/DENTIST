@@ -1,9 +1,9 @@
 #include "dataTypeDef.h"
 #include "utils.h"
 #include "stats/FDR.h"
-
 #include <Eigen/Dense> 
-#include <boost/math/distributions/inverse_chi_squared.hpp>
+// #include <boost/math/distributions/inverse_chi_squared.hpp>
+#include <boost/math/distributions/chi_squared.hpp>
 
 
 
@@ -44,6 +44,7 @@ extern "C"
                 printf( "        the solution could not be computed.\n" );
                 exit(-1);
         }
+        return 0;
     }
 }
 
@@ -172,8 +173,7 @@ bool printMat (double* mat, int nrow, int ncol)
         printf("\n");
     }
     printf("----------------------------------------\n");
-
-
+    return 0;
 }
 
 
@@ -259,7 +259,7 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
     omp_set_num_threads(*ncpus);
     Eigen::setNbThreads(*ncpus);
     uint K = std::min(uint(idx.size()),nSample) * probSVD;
-    double* LDmatSubset = new double[idx.size() * idx.size()];
+    //double* LDmatSubset = new double[idx.size() * idx.size()];
     Eigen::MatrixXd LD_it (idx2.size(),idx.size() );
     Eigen::VectorXd  zScore_eigen (idx.size() );
     Eigen::MatrixXd VV (idx.size(),idx.size() );
@@ -267,7 +267,8 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
 #pragma omp parallel for
     for (uint i = 0; i < idx2.size(); i ++)
         for (uint k = 0; k < idx.size(); k ++)
-            LD_it(i,k) =  LDmat[idx2[i] * (*matSize) + idx[k] ] ;
+            LD_it(i,k) = readMatrix<T>(LDmat, *matSize, idx2[i], idx[k]) ;
+            //LD_it(i,k) = LDmat[idx2[i] * (*matSize) + idx[k] ] ;
 
 #pragma omp parallel for
     for (uint i = 0; i < idx.size(); i ++)
@@ -276,7 +277,8 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
 #pragma omp parallel for
     for (uint i = 0; i < idx.size(); i ++)
         for (uint j = 0; j < idx.size(); j ++)
-            VV(i,j) =   LDmat[idx[i] * (*matSize) + idx[j]];
+            VV(i,j) = readMatrix<T>(LDmat, *matSize, idx[i], idx[j]) ;
+            //VV(i,j) =   LDmat[idx[i] * (*matSize) + idx[j]];
 
     struct timespec start, finish;
     double elapsed;
@@ -286,6 +288,12 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
 
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(VV);
     D(printf("Eigen decomposition is done." ););
+    clock_gettime(CLOCK_MONOTONIC, &finish);
+    elapsed = (finish.tv_sec - start.tv_sec);
+    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+    D(printf("[info] Time elapsed is %f. \n", elapsed ););
+
     int nRank = es.eigenvectors().rows();
     int nZeros = 0;
     for (int j=0; j<nRank; j++) 
@@ -322,18 +330,15 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
             exit(-1);
         }
         uint j = idx2[i];
-        zScore_e[j] = (zScore[j ] - imputedZ[j] ) /  sqrt( LDmat[*matSize * j + j] - rsqList [j] );
+        zScore_e[j] = (zScore[j ] - imputedZ[j] ) /  sqrt( readMatrix<T>(LDmat, *matSize, j, j) - rsqList [j] );
+        //zScore_e[j] = (zScore[j ] - imputedZ[j] ) /  sqrt(  LDmat[*matSize * j + j] - rsqList [j] );
         //if(rsqList [idx2[i]]  >0.7) imputedZ[idx2[i]] /= sqrt(rsqList [idx2[i]] );
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &finish);
-    elapsed = (finish.tv_sec - start.tv_sec);
-    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    D(printf("[info] Time elapsed is %f. \n", elapsed ););
 
 
 
-    delete[] LDmatSubset;
+    //delete[] LDmatSubset;
 }
 
 
@@ -356,12 +361,23 @@ void testSymetry(double* LDmat, uint* markerSize)
         }
 }
 
-double logPvalueChisq1(double stat)
+//double logPvalueChisq1(double stat)
+//{
+//    boost::math::inverse_chi_squared_distribution<double> mydist(1);
+//    double p = boost::math::cdf(mydist,1/(stat));
+//    return ( -log10(p) ) ;
+//}
+//
+
+
+double minusLogPvalueChisq2(double stat)
 {
-    boost::math::inverse_chi_squared_distribution<double> mydist(1);
-    double p = boost::math::cdf(mydist,1/(stat));
+    boost::math::chi_squared_distribution<double> mydist(1);
+    double p = boost::math::cdf( boost::math::complement(mydist, stat) );
     return ( -log10(p) ) ;
 }
+
+
 
 
 // void  regularizeLD (double* LDmat, int markerSize)
@@ -532,7 +548,7 @@ void impute(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 template <class T>
 void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
-        int* interested, float propSVD, bool gcControl, int* ncpus)
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus)
 {
  
     //double internalControl = 5.45;
@@ -563,7 +579,7 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
     std::vector<double> diff;
 
     //for (uint t =0; t < 1; t ++)
-    for (uint t =0; t < 8; t ++)
+    for (uint t =0; t < nIter; t ++)
     {
         std::vector<uint> idx2_QCed;
         std::vector<size_t> fullIdx_tmp;
@@ -585,7 +601,6 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             //     idx.push_back(idx2[i]);
         }
         oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, propSVD, ncpus);
-        D(printf("%d, %d\n", idx.size(), idx2.size()););
         diff.resize(fullIdx.size());
 
         for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[fullIdx[i]]);
@@ -609,12 +624,12 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         {
             if(gcControl == true)
             {
-                if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] /inflationFactor  ) >  -log10(pValueThreshold)) ) 
+                if( !(diff[i] > threshold && minusLogPvalueChisq2(  diff[i] * diff[i] /inflationFactor  ) >  -log10(pValueThreshold)) ) 
                     fullIdx_tmp.push_back(fullIdx[i]);
             } 
             else
             {
-                if( !(diff[i] > threshold && logPvalueChisq1(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
+                if( !(diff[i] > threshold && minusLogPvalueChisq2(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
                     fullIdx_tmp.push_back(fullIdx[i]);
             }
         }
@@ -629,7 +644,6 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             else
                 idx2.push_back(fullIdx[i]);
         }
-        D(printf("%d, %d\n", idx.size(), idx2.size());)
     }
 
     // //  Rescue
@@ -650,13 +664,27 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 // instantiate T into float
 template void DENTIST <float>(float* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
 
-template void oneIteration <float> (float* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float propSVD,  int* ncpus);
 
 template void  DENTIST<double >(double* LDmat, uint* markerSize, uint* nSample, double* zScore,
         double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int* ncpus);
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+
+template void DENTIST <smatrix_d >(smatrix_d* LDmat, uint* markerSize, uint* nSample, double* zScore,
+        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+template void DENTIST <smatrix_f >(smatrix_f* LDmat, uint* markerSize, uint* nSample, double* zScore,
+        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+template void DENTIST <smatrix_i >(smatrix_i* LDmat, uint* markerSize, uint* nSample, double* zScore,
+        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+
+
+
+
+template void oneIteration <float> (float* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float propSVD,  int* ncpus);
 
 template void impute<double >(double* LDmat, uint* markerSize, uint* nSample,
         double* zScore, double* imputedZ, double* rsq, double* zScore_e,
@@ -665,6 +693,21 @@ template void impute<double >(double* LDmat, uint* markerSize, uint* nSample,
 template void impute<float>(float* LDmat, uint* markerSize, uint* nSample,
         double* zScore, double* imputedZ, double* rsq, double* zScore_e,
         double pValueThreshold, float propSVD, int* ncpus);
+
+template void impute<smatrix_i>(smatrix_i* LDmat, uint* markerSize, uint* nSample,
+        double* zScore, double* imputedZ, double* rsq, double* zScore_e,
+        double pValueThreshold, float propSVD, int* ncpus);
+
+template void impute<smatrix_f>(smatrix_f* LDmat, uint* markerSize, uint* nSample,
+        double* zScore, double* imputedZ, double* rsq, double* zScore_e,
+        double pValueThreshold, float propSVD, int* ncpus);
+
+template void impute<smatrix_d>(smatrix_d* LDmat, uint* markerSize, uint* nSample,
+        double* zScore, double* imputedZ, double* rsq, double* zScore_e,
+        double pValueThreshold, float propSVD, int* ncpus);
+
+
+
 
 
 

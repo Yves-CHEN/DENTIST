@@ -3,7 +3,7 @@ dirs = builts
 
 
 # Name of the executable.
-OUTPUT = ./builts/DENTIST.tmp
+OUTPUT = ./builts/DENTIST.tmp2
 
 # Compiler
 #CXX =  /gpfs1/scratch/90days/uqzzhen4/local/.local/bin/g++-7
@@ -11,12 +11,14 @@ OUTPUT = ./builts/DENTIST.tmp
 CXX = g++
 
 #mklRoot = /gpfs1/scratch/90days/uqzzhen4/local/intel/compilers_and_libraries/linux/mkl
-mklRoot = /gpfs1/scratch/90days/uqzzhen4/local/intel/compilers_and_libraries/linux/mkl
+#mklRoot = /gpfs1/scratch/90days/uqzzhen4/local/intel/compilers_and_libraries/linux/mkl
+
+main = main
 
 # EIGEN library
-EIGEN_PATH = $(EIGEN3_INCLUDE_DIR)
+#EIGEN_PATH = $(EIGEN3_INCLUDE_DIR)
 
-BOOST_PATH = /home/uqwche11/90days/tool-sources/boost_1_69_0
+#BOOST_PATH = /home/uqwche11/90days/tool-sources/boost_1_69_0
 
 # Intel MKL library
 #MKL_PATH = /opt/intel/mkl
@@ -33,9 +35,8 @@ LIB +=  -lz -Wl,-lm -ldl
 # PKG_LIBS =  -Llib -lLDinspect -DUSEDOUBLE -g3 -m64  -Wl,--start-group /opt/intel/composer_xe_2017.4/mkl/lib/intel64/libmkl_intel_lp64.a /opt/intel/composer_xe_2017.4/mkl/lib/intel64/libmkl_gnu_thread.a /opt/intel/composer_xe_2017.4/mkl/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl -L /home/uqwche11/utils/R-3.2.2/lib64/R/lib/ -lR -lRblas -lRlapack
 
 
-PKG_CPPFLAGS =  -m64 -DEIGEN_NO_DEBUG -DNDEBUG   -fpic  -g -O2     -I${BOOST_PATH}   -I${mklROOT}/include -I${EIGEN3_INCLUDE_DIR}  -I. -DUSEDOUBLE -g3 -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL 
-#PKG_LIBS =  -Llib -lLDinspect -DUSEDOUBLE -g3 -m64    -Wl,--start-group ${mklRoot}/lib/intel64/libmkl_intel_lp64.a ${mklRoot}/lib/intel64/libmkl_gnu_thread.a ${mklRoot}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl  -DNDEBUG -DEIGEN_USE_MKL_ALL
-PKG_LIBS = -static -L../DENTIST/lib -lLDinspect -DUSEDOUBLE -g3 -m64  -Wl,--start-group ${mklRoot}/lib/intel64/libmkl_intel_lp64.a ${mklRoot}/lib/intel64/libmkl_gnu_thread.a ${mklRoot}/lib/intel64/libmkl_core.a -Wl,--end-group  -lgomp -lpthread -lz -lm -ldl  -DNDEBUG -DEIGEN_USE_MKL_ALL 
+PKG_CPPFLAGS =  -m64 -DEIGEN_NO_DEBUG -DNDEBUG   -fpic  -g -O2     -I${BOOST_PATH}   -I${MKLROOT}/include -I${EIGEN3_INCLUDE_DIR}  -I. -DUSEDOUBLE -g3 -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL 
+PKG_LIBS = -static -L$(main) -l$(main) -DUSEDOUBLE -g3 -m64  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group  -lgomp -lpthread -lz -lm -ldl  -DNDEBUG -DEIGEN_USE_MKL_ALL 
 
 
 
@@ -61,7 +62,12 @@ $(dirs):
 
 
 
-$(OUTPUT) : | $(dirs)
+
+$(main)/$(main).a :
+	$(MAKE) -C ${main}
+
+
+$(OUTPUT) : | $(dirs)  $(main)/$(main).a
 	$(CXX)  -o $(OUTPUT)   $(OBJ) $(PKG_LIBS) $(CXXFLAGS) $(LIB) 
 
 $(OBJ) : $(HDR)
@@ -99,5 +105,9 @@ FORCE:
 
 clean: 
 	rm -f *.o
-	rm -f ./lib/*.a
+	for dir in $(main); do \
+		$(MAKE) -C $$dir clean; \
+	done
+
+
 

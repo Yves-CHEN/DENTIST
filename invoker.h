@@ -14,11 +14,13 @@ template<class T>  int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nS
 /// 
 /// 
 template<class T> void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e, double pValueThresh,  int* interested, float propSVD, bool gcControl, int* ncpus);
+        double* imputedZ, double* rsq, double* zScore_e, double pValueThresh,  int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
 
 template<class T> void impute(T* LDmat, uint* markerSize, uint* nSample,
         double* zScore, double* imputedZ, double* rsq, double* zScore_e,
         double pValueThresh, float propSVD, int* ncpus);
+
+
 
 
 
@@ -34,32 +36,6 @@ template<class T> void impute(T* LDmat, uint* markerSize, uint* nSample,
 //         zScores[i] = i +2;
 // 
 // }
-
-template <class T>
-void findDup(T result[], double rThreshold, vector<int>& dupBearer, vector<double>& corABS, vector<int>& sign)
-{
-    int count = 0;
-    unsigned int matSize = dupBearer.size();
-    double minValue = 1;
-    for(int i =0 ; i < matSize; i ++)
-    {
-        if(dupBearer[i] != -1)  continue; // otherwise i is not a dup.
-        for(int j =i+1 ; j < matSize ; j ++)
-        {
-            if((dupBearer[j]  == -1 ) && fabs(result[i*matSize + j ]) > rThreshold) 
-            {
-                if(result[i*matSize + j ] < 0) sign[j] = -1;
-                corABS[j] = fabs(result[i*matSize + j ]);
-                dupBearer[j] = count;
-            }
-            if(fabs(result[i*matSize + j ]) < minValue)
-                minValue =  fabs(result[i*matSize + j ]);
-        }
-        count ++;
-    }
-
-
-}
 
 void findDup2(double* r,  double rThreshold, vector<int>& dupBearer, vector<int>& sign)
 {
@@ -81,11 +57,13 @@ void findDup2(double* r,  double rThreshold, vector<int>& dupBearer, vector<int>
     }
 
 }
+
+template<class T>
 void runDENTIST( uint nSamples,
         double* the_zScores,  
         int cutoff,   int ncpus,  double* imputedZ,
         double* rsq, double* zScore_e, bool* ifDup,
-        int thePos, int startIdx, int endIdx, LDType* result,
+        int thePos, int startIdx, int endIdx, T* result,
         const Options& opt)
 {
 
@@ -95,7 +73,7 @@ void runDENTIST( uint nSamples,
     vector<int>    dupBearer( arrSize, -1);
     vector<double> corABS( arrSize, -1);
     vector<int>    sign( arrSize, 1);
-    findDup<LDType>(result, rThreshold,  dupBearer, corABS, sign);
+    findDup<T>(result, rThreshold,  dupBearer, corABS, sign);
     uint sum =0;
     for (int i =0; i < dupBearer.size(); i ++)
         sum += (dupBearer[i] !=-1);
@@ -106,7 +84,8 @@ void runDENTIST( uint nSamples,
     double*       rsq_tmp = new double[ arrSize]() ;
     double*  zScore_e_tmp = new double[ arrSize]() ;
     uint      arrSize_tmp = arrSize - sum;
-    LDType* resultNoDup = new LDType[ arrSize * arrSize]() ;
+    //LDType* resultNoDup = new LDType[ arrSize * arrSize]() ;
+    T* resultNoDup = createStorage<T>(long(arrSize_tmp));
 
     int count =0;
     for (uint i = 0; i < dupBearer.size(); i ++)
@@ -118,16 +97,17 @@ void runDENTIST( uint nSamples,
            for (uint j =0; j < dupBearer.size(); j ++)
                 if(dupBearer[j] == -1)
                 {
-                    resultNoDup[count * arrSize_tmp + count2] = result[i*arrSize + j];
+                    saveData(readMatrix(result, arrSize, i,j ), count, count2, resultNoDup, arrSize_tmp);
+                    //resultNoDup[count * arrSize_tmp + count2] = result[i*arrSize + j];
                     count2 ++;
                 }
            count ++ ;
         }
     }
-    DENTIST<LDType>(resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp,
+    DENTIST<T>(resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp,
             imputedZ_tmp, rsq_tmp, zScore_e_tmp, opt.pValueThreshold,
-            &interested, opt.propPCtrunc, opt.gcControl, &ncpus);
-    delete[] resultNoDup;
+            &interested, opt.propPCtrunc, opt.gcControl, opt.nIterations, &ncpus);
+    deleteStorage(resultNoDup);
     count =0;
     vector<uint> assignIdx (dupBearer.size() , 0);
     for (uint i =0; i <dupBearer.size(); i ++)
@@ -137,7 +117,6 @@ void runDENTIST( uint nSamples,
         else
             assignIdx[i] = dupBearer[i];
     }
-    cout << "assigning"  << endl;
     for (uint i =startIdx; i < endIdx; i ++)
     {
         if(i - thePos > dupBearer.size()) stop("[error] function runDENTIST"); 
@@ -150,17 +129,17 @@ void runDENTIST( uint nSamples,
         ifDup[i]     = dupBearer[i - thePos] != -1 ;
     }
 
-    cout << "assigning"  << endl;
     delete[]  zScores_tmp;
     delete[] imputedZ_tmp;
     delete[]      rsq_tmp;
     delete[] zScore_e_tmp;
 }
 
+template<class T>
 void runImpute(uint nSamples, double* zScores,  
         int cutoff,   int ncpus,  double* imputedZ,
         double* rsq, double* zScore_e, bool* ifDup,
-        int thePos, int startIdx, int endIdx, LDType* result,
+        int thePos, int startIdx, int endIdx, T* result,
         const Options& opt)
 {
     uint    arrSize    = cutoff -1;
@@ -168,7 +147,7 @@ void runImpute(uint nSamples, double* zScores,
     vector<int>    dupBearer( arrSize, -1);
     vector<double> corABS( arrSize, -1);
     vector<int>    sign( arrSize, 1);
-    findDup<LDType>(result, rThreshold,  dupBearer, corABS, sign);
+    findDup<T>(result, rThreshold,  dupBearer, corABS, sign);
     uint sum =0;
     for (int i =0; i < dupBearer.size(); i ++)
         sum += (dupBearer[i] !=-1);
@@ -177,7 +156,8 @@ void runImpute(uint nSamples, double* zScores,
     double*       rsq_tmp = new double[ arrSize]() ;
     double*  zScore_e_tmp = new double[ arrSize]() ;
     uint      arrSize_tmp = arrSize - sum;
-    LDType*   resultNoDup = new LDType[ arrSize * arrSize]() ;
+    //LDType*   resultNoDup = new LDType[ arrSize * arrSize]() ;
+    T* resultNoDup = createStorage<T>(long(arrSize_tmp));
     for (uint i = 0, new_i =0; i < dupBearer.size(); i ++)
     {
         if(dupBearer[i] == -1)
@@ -186,16 +166,17 @@ void runImpute(uint nSamples, double* zScores,
             for (uint j =0, new_j= 0; j < dupBearer.size(); j ++)
                 if(dupBearer[j] == -1)
                 {
-                    resultNoDup[new_i* arrSize_tmp + new_j] = result[i*arrSize + j];
+                    //resultNoDup[new_i* arrSize_tmp + new_j] = result[i*arrSize + j];
+                    saveData(readMatrix(result, arrSize, i,j ), new_i, new_j, resultNoDup, arrSize_tmp);
                     new_j ++;
                 }
             new_i ++ ;
         }
     }
-    impute<LDType>(resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp,
+    impute<T>(resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp,
             imputedZ_tmp, rsq_tmp, zScore_e_tmp, opt.pValueThreshold, 
             opt.propPCtrunc, &ncpus);
-    delete[] resultNoDup;
+    deleteStorage(resultNoDup);
     int count =0;
     vector<uint> assignIdx (dupBearer.size() , 0);
     for (uint i =0; i <dupBearer.size(); i ++)
@@ -210,7 +191,7 @@ void runImpute(uint nSamples, double* zScores,
         if(i - thePos > dupBearer.size()) stop("[error] function runImpute"); 
         imputedZ[i]  = imputedZ_tmp[assignIdx[i - thePos]] * sign[i-thePos];
         uint j = assignIdx[i - thePos];
-        rsq[i]       = resultNoDup[arrSize_tmp * j + j] - rsq_tmp     [assignIdx[i - thePos]] ;
+        rsq[i]       = readMatrix(resultNoDup,arrSize_tmp,  j, j) - rsq_tmp     [assignIdx[i - thePos]] ;
         ifDup[i]     = dupBearer[i - thePos] != -1 ;
     }
     delete[]  zScores_tmp;

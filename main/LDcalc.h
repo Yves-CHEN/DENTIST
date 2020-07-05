@@ -41,7 +41,7 @@ public:
     };
     inline void print()
     {
-        printf("[info] nrow = %d, ncol = %d, \n", genoTab.size(), genoTab[0].size());
+        printf("[info] nrow = %lu, ncol = %lu, \n", genoTab.size(), genoTab[0].size());
         for(int i = 0; i < genoTab.size(); i ++)
             for(int j = 0; j < genoTab[0].size(); j ++)
                 printf("%d\t", genoTab[i][j]);
@@ -94,7 +94,7 @@ double covar(std::vector<int>& geno1,  std::vector<int>& geno2)
 
 void dim(std::vector<std::vector<double> >  genoTab)
 {
-    printf("nrow = %d, ncol = %d, \n", genoTab.size(), genoTab[0].size());
+    printf("nrow = %lu, ncol = %lu, \n", genoTab.size(), genoTab[0].size());
 }
 
 

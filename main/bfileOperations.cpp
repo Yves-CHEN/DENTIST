@@ -1,6 +1,6 @@
 #include "dataTypeDef.h"
-
 #include <bitset>
+
 
 // ******************************************************************************
 /// This calcualting the LD between SNPi and SNPj(missing genotypes) the GCTA way.
@@ -11,9 +11,9 @@
 //   Note the the nonmissing (SNPi & SNPj) is a subset of individuals of 
 //     nonmissing (SNPi), or   nonmissing (SNPj).
 // ******************************************************************************
-
 template <class T>
-int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uint64* theMarkIdx, uint64 sizeOfMarkIdx, uint64* toAvert, int cutoff, int ncpus, T* result, int64 jump)
+int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, uint64* theMarkIdx,
+        int64 sizeOfMarkIdx, uint64* toAvert, int cutoff, int ncpus, T* result, int64 jump)
 {
     std::cout << nSample << "\t"
               << nMarker << "\t"
@@ -38,12 +38,12 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
     // **************************************************************
     //                     Variables
     // **************************************************************
-    uint64 processSamplePerRound = sizeof(dataType)*8 /2;
+    int64 processSamplePerRound = sizeof(dataType)*8 /2;
     //uint64 perMakerSize = ceil ( (nSample) / 1.0 / processSamplePerRound );
-    uint64 perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
-    uint64 perMakerSize = int( (nSample) / 1.0 / processSamplePerRound );
-    uint64 nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
-    long lSize =0;
+    int64 perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
+    int64 perMakerSize = int( (nSample) / 1.0 / processSamplePerRound );
+    int64 nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
+    int64 lSize =0;
     /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes in older version.
     int const nByteHeader = 9;
     uchar headerCoding[nByteHeader +1 ] = { 0x6c, 0x1b, 0x01, 0xdc, 0x0f, 0xe7, 0x0f, 0x6b, 0x01};
@@ -52,7 +52,7 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
     int nThrowAway = 0;
     uchar  headerBuf[nByteHeader ] ;
     //uint64 nKeptSample = nSample;
-    uint64 nKeptSample = perMakerSize * processSamplePerRound;
+    int64 nKeptSample = perMakerSize * processSamplePerRound;
     //// std::vector<std::vector<dataType> > GENO_old      (sizeOfMarkIdx, std::vector<dataType> ( nSample, 0) );
     std::vector<double>         GENO_VAR (sizeOfMarkIdx, -1 );
     std::vector<double>         GENO_Ex  (sizeOfMarkIdx, -1 );
@@ -71,12 +71,12 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
     /// This checks the version of bed file. Examine if there is damage to
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
-    fread (&headerBuf,1, nByteHeader, bedFileReader);
+    size_t readSize = fread (&headerBuf,1, nByteHeader, bedFileReader);
     if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
     if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
     {
-        printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n", lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
+        printf("[error] The size of bedFile %lld is inconsistenty with the estimated %lld basd on %lld samples and %lld markers. \n", lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
     }
     ////////////////////////////////////////////////////
     /// Creating map for a bype.
@@ -121,7 +121,7 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
     printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
     
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
-    fread (bufferAllMarkers, 1, loadSize, bedFileReader);
+    readSize = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
     dataType* bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
     
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -154,7 +154,7 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
     std::vector<double>  VAR(sizeOfMarkIdx);
 
 #pragma omp parallel for
-   for (uint64 i = 0; i < sizeOfMarkIdx; i ++)
+   for (int64 i = 0; i < sizeOfMarkIdx; i ++)
    {
 
       dataType marker = 0  ;
@@ -162,7 +162,7 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
       double sum11_i   = 0;
       double nMissing  = 0;
       dataType* GENO_i = GENO[i] ;
-      for (uint64  k =0; k < perMakerSize; k ++) {
+      for (int64  k =0; k < perMakerSize; k ++) {
           marker = markMissing[ GENO_i[k]  ]   ;
           nMissing += countOnes[(dataType)(~marker)];
           sum_i    += countOnes[GENO_i [k] & marker];
@@ -187,7 +187,7 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
     std::cout << "jump" << jump << std::endl;
 
  #pragma omp parallel for
-    for (uint64 i = 0; i < sizeOfMarkIdx; i ++)
+    for (int64 i = 0; i < sizeOfMarkIdx; i ++)
     {
         dataType* GENO_i = GENO[i] ;
 
@@ -256,56 +256,22 @@ int calcLDFromBfile_gcta (std::string bedFile, int64 nSample, int64 nMarker, uin
             else
             {
                 printf("[error] LD was set to 0, because var_i = %f, var_j  %f nMissing = %d E_i_sq (%f) - E_i * E_i\n", var_i, var_j, nMissing, E_i_sq);
-                printf( "[error] , when parse the markerIdx %d-%d.\n", theMarkIdx[i],  theMarkIdx[j]);
-                printf("[error] %d - %d \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
+                printf( "[error] , when parse the markerIdx %lld-%lld.\n", theMarkIdx[i],  theMarkIdx[j]);
+                printf("[error] %lld - %lld \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
                 exit(-1);
             }
 
             if(i ==0 && j == 1)
                 std::cout << sum_XY/(nKeptSample)  << " " << cov_XY << " " << LD << std::endl;
 
-            if(sizeof(*result) == 1) // char
-            {
-                char aa =  char(LD*250);
-                printf("(%f, %f)\n",LD, (0L |255 & aa)/250.0  );
-                result[sizeOfMarkIdx * i + j] = char(LD * 250);
-                result[sizeOfMarkIdx * j + i] = char(LD * 250);
-            }
-            else if(sizeof(*result) == 2) // short
-            {
-                result[sizeOfMarkIdx * i + j] = short(LD * 1000);
-                result[sizeOfMarkIdx * j + i] = short(LD * 1000);
-            }
-            else
-            {
-                result[sizeOfMarkIdx * i + j] = LD ;
-                result[sizeOfMarkIdx * j + i] = LD ;
-            }
+            saveData<T>(LD, i, j, result, sizeOfMarkIdx);
 
-        }
-    }
+           }
+     }
 
+     setDiag<T>(result, sizeOfMarkIdx);
 
-
-#pragma omp parallel for                                       
-    for (uint64 i = 0; i < sizeOfMarkIdx; i ++)          
-    {                                                          
-         if(sizeof(*result) == 1) // char
-             result[sizeOfMarkIdx * i + i] = T(1 * 250);
-         else if(sizeof(*result) == 2) // short
-             result[sizeOfMarkIdx * i + i] = T(1000); 
-         else
-             result[sizeOfMarkIdx * i + i] = 1; 
-    }                                            
-
-
-    for (uint64 i = 0; i < 10; i ++)          
-    {
-        for (uint64 j = 0; j <10; j ++)          
-            std::cout << result[i*sizeOfMarkIdx + j] << ' ';
-        std::cout << std::endl;
-    }
-  
+ 
 
     delete[] GENO;
     delete[] bufferAllMarkers ;
@@ -350,7 +316,7 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
     uint perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
     uint perMakerSize = int( (nSample) / 1.0 / processSamplePerRound );
     uint nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
-    long lSize =0;
+    int64 lSize =0;
     /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes in older version.
     int const nByteHeader = 9;
     uchar headerCoding[nByteHeader +1 ] = { 0x6c, 0x1b, 0x01, 0xdc, 0x0f, 0xe7, 0x0f, 0x6b, 0x01};
@@ -378,7 +344,7 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
     /// This checks the version of bed file. Examine if there is damage to
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
-    fread (&headerBuf,1, nByteHeader, bedFileReader);
+    size_t readSize = fread (&headerBuf,1, nByteHeader, bedFileReader);
     if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
     if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
@@ -428,7 +394,7 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
     printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
     
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
-    fread (bufferAllMarkers, 1, loadSize, bedFileReader);
+    readSize = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
     dataType* bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
     
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -529,40 +495,22 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
                 printf("[error] %d - %d \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
                 exit(-1);
             }
-
-            if(sizeof(*result) == 1) // char
-            {
-                char aa =  char(LD*250);
-                printf("(%f, %f)\n",LD, (0L |255 & aa)/250.0  );
-                result[sizeOfMarkIdx * i + j] = char(LD * 250);
-                result[sizeOfMarkIdx * j + i] = char(LD * 250);
-            }
-            else if(sizeof(*result) == 2) // short
-            {
-                result[sizeOfMarkIdx * i + j] = short(LD * 1000);
-                result[sizeOfMarkIdx * j + i] = short(LD * 1000);
-            }
-            else
-            {
-                result[sizeOfMarkIdx * i + j] = LD ;
-                result[sizeOfMarkIdx * j + i] = LD ;
-            }
-
+            saveData<T> (LD, i, j, result, sizeOfMarkIdx);
         }
     }
 
 
 
-#pragma omp parallel for                                       
-    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
-    {                                                          
-         if(sizeof(*result) == 1) // char
-             result[sizeOfMarkIdx * i + i] = T(1 * 250);
-         else if(sizeof(*result) == 2) // short
-             result[sizeOfMarkIdx * i + i] = T(1000); 
-         else
-             result[sizeOfMarkIdx * i + i] = 1; 
-    }                                            
+///#pragma omp parallel for                                       
+///    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
+///    {                                                          
+///         if(sizeof(*result) == 1) // char
+///             result[sizeOfMarkIdx * i + i] = T(1 * 250);
+///         else if(sizeof(*result) == 2) // short
+///             result[sizeOfMarkIdx * i + i] = T(1000); 
+///         else
+///             result[sizeOfMarkIdx * i + i] = 1; 
+///    }                                            
   
 
     delete[] GENO;
@@ -611,12 +559,12 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     // **************************************************************
     //                     Variables
     // **************************************************************
-    uint processSamplePerRound = sizeof(dataType)*8 /2;
+    uint64 processSamplePerRound = sizeof(dataType)*8 /2;
     const int individualsPerByte = 4;
-    uint perMakerSizeOrig = ceil ( (nSample) / 1.0 / individualsPerByte );
-    uint perMakerSize = uint( (nSample) / 1.0 / processSamplePerRound );
-    uint nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
-    long lSize =0;
+    uint64 perMakerSizeOrig = ceil ( (nSample) / 1.0 / individualsPerByte );
+    uint64 perMakerSize = uint( (nSample) / 1.0 / processSamplePerRound );
+    uint64 nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
+    int64 lSize =0;
     /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes in older version.
     int const nByteHeader = 9;
     uchar headerCoding[nByteHeader +1 ] = { 0x6c, 0x1b, 0x01, 0xdc, 0x0f, 0xe7, 0x0f, 0x6b, 0x01};
@@ -624,7 +572,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     std::string formatVersion = "";
     int nThrowAway = 0;
     uchar  headerBuf[nByteHeader ] ;
-    uint nKeptSample = perMakerSize * processSamplePerRound;
+    uint64 nKeptSample = perMakerSize * processSamplePerRound;
     std::vector<double>         GENO_VAR (sizeOfMarkIdx, -1 );
     std::vector<double>         GENO_Ex  (sizeOfMarkIdx, -1 );
     std::vector<double>         GENO_sum11  (sizeOfMarkIdx, -1 ); // sum of sample with genotype 11
@@ -643,7 +591,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     /// This checks the version of bed file. Examine if there is damage to
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
-    fread (&headerBuf,1, nByteHeader, bedFileReader);
+    size_t readSize = fread (&headerBuf,1, nByteHeader, bedFileReader);
     if(!memcmp(headerCoding, headerBuf, nByteHeader)) {
         D(printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); );
         formatVersion="1.9"; nThrowAway = nByteHeader;
@@ -654,7 +602,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     };
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
     {
-        printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n",
+        printf("[error] The size of bedFile %lld is inconsistenty with the estimated %lld basd on %lld samples and %lld markers. \n",
                 lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
     }
     ////////////////////////////////////////////////////
@@ -700,7 +648,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     D(printf("[info] Map size is %d Mb. \n", int(sizeOfMap * 1.0 * sizeof(uint)* 4 + sizeOfMap * 1.0 * sizeof(dataType) * 1)););
     
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
-    fread (bufferAllMarkers, 1, loadSize, bedFileReader);
+    readSize = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
     dataType* bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
     clock_gettime(CLOCK_MONOTONIC, &start);
     
@@ -777,50 +725,31 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
              else
              {
                  
-                 printf("[error] LD was set to 0, because var_[%d] = %f, var_[%d]  %f  E_i_sq (%f) - E_i * E_i\n", i, VAR[i], j, VAR[j],  E_sq[i]);
-                 printf( "[error] , when parse the markerIdx %d-%d.\n", theMarkIdx[i],  theMarkIdx[j]);
-                 printf("[error] %d - %d \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
+                 printf("[error] LD was set to 0, because var_[%lld] = %f, var_[%lld]  %f  E_i_sq (%f) - E_i * E_i\n", i, VAR[i], j, VAR[j],  E_sq[i]);
+                 printf( "[error] , when parse the markerIdx %lld-%lld.\n", theMarkIdx[i],  theMarkIdx[j]);
+                 printf("[error] %lld - %lld \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
                  exit(-1);
              }
 
-             if(sizeof(*result) == 1) // char
-             {
-                 char aa =  char(LD*250);
-                 result[sizeOfMarkIdx * i + j] = char(LD * 250);
-                 result[sizeOfMarkIdx * j + i] = char(LD * 250);
-             }
-             else if(sizeof(*result) == 2) // short
-             {
-                 result[sizeOfMarkIdx * i + j] = short(LD * 10000);
-                 result[sizeOfMarkIdx * j + i] = short(LD * 10000);
-             }
-             else if (std::is_same<T, int>::value) // int
-             {
-                 result[sizeOfMarkIdx * i + j] = int(LD * 1e6);
-                 result[sizeOfMarkIdx * j + i] = int(LD * 1e6);
-             }
-             else
-             {
-                 result[sizeOfMarkIdx * i + j] = LD ;
-                 result[sizeOfMarkIdx * j + i] = LD ;
-             }
+             saveData<T> (LD, i, j, result, sizeOfMarkIdx);
          }
      }
 
+     setDiag<T>(result, sizeOfMarkIdx);
 
 
-#pragma omp parallel for                                       
-    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
-    {                                                          
-        if(sizeof(*result) == 1) // char
-            result[sizeOfMarkIdx * i + i] = char(1 * 250);
-        else if(sizeof(*result) == 2) // short
-            result[sizeOfMarkIdx * i + i] = short(10000); 
-         else if (std::is_same<T, int>::value) // int
-            result[sizeOfMarkIdx * i + i] = T(1000000); 
-        else
-            result[sizeOfMarkIdx * i + i] = 1; 
-    }                                            
+/// #pragma omp parallel for                                       
+///     for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)          
+///     {                                                          
+///         if(sizeof(*result) == 1) // char
+///             result[sizeOfMarkIdx * i + i] = char(1 * 250);
+///         else if(sizeof(*result) == 2) // short
+///             result[sizeOfMarkIdx * i + i] = short(10000); 
+///          else if (std::is_same<T, int>::value) // int
+///             result[sizeOfMarkIdx * i + i] = T(1000000); 
+///         else
+///             result[sizeOfMarkIdx * i + i] = 1; 
+///     }                                            
   
 
     delete[] GENO;
@@ -929,8 +858,14 @@ int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMa
 }
 
 
-template int _LDFromBfile <short> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, short* result, int* jump, int* withNA);
 template int _LDFromBfile <int> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, int* result, int* jump, int* withNA);
 template int _LDFromBfile <float> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, float* result, int* jump, int* withNA);
 template int _LDFromBfile <double> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,double* result, int* jump, int* withNA);
+
+template int _LDFromBfile <smatrix_d > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_d* result, int* jump, int* withNA);
+template int _LDFromBfile <smatrix_f > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_f* result, int* jump, int* withNA);
+template int _LDFromBfile <smatrix_i > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_i* result, int* jump, int* withNA);
+
+
+
 

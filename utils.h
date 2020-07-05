@@ -1,7 +1,6 @@
 
 #ifndef    __UTILS__
 #define    __UTILS__
-#endif   //__UTILS__
 
 
 #include <string> 
@@ -74,4 +73,5 @@ int split_string(const string &str, vector<string> &vec_str, string separator)
     return (int)vec_str.size();
 }
 
+#endif   //__UTILS__
 

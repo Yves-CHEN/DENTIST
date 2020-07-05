@@ -1,27 +1,23 @@
 # Directory of the target
-OUTPUT = ../lib/libLDinspect.a
-#
+OUTPUT = libmain.a
 # # Compiler
 CXX = g++
 AR = ar
 LIBTOOL = libtool --mode=link cc -static
+# Require BOOST lib
+# Require EIGEN library
 
-BOOST_PATH = /home/uqwche11/90days/tool-sources/boost_1_69_0
-
-# EIGEN library
-mklRoot = /gpfs1/scratch/90days/uqzzhen4/local/intel/compilers_and_libraries/linux/mkl
-
-PKG_CPPFLAGS =  -m64 -I./stats/  -I${BOOST_PATH}  -I$(mklRoot)/include -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL -DDEBUG_DENTIST
-PKG_LIBS =   lib/libHeader.a $(mklRoot)/lib/intel64/libmkl_intel_lp64.a  $(mklRoot)/lib/intel64/libmkl_gnu_thread.a $(mklRoot)/lib/intel64/libmkl_core.a
+PKG_CPPFLAGS =  -m64 -I./stats/  -I$(BOOST_PATH)  -I$(MKLROOT)/include -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL -DDEBUG_DENTIST
+PKG_LIBS =    $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a  $(MKLROOT)/lib/intel64/libmkl_gnu_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a
 
 
+# export EIGEN3_INCLUDE_DIR="$local/include/eigen3
+# EIGEN_PATH
 
-CXXFLAGS = -w -O3 -m64 -fopenmp -I $(EIGEN_PATH)  -I $(mklRoot)/include
-
+CXXFLAGS = -w -O3 -m64 -fopenmp -I $(EIGEN3_INCLUDE_DIR)  -I $(MKLROOT)/include
 HDR += *.h 
-
-
 SRC =  bfileOperations.cpp \
+	storage.cpp \
 	calInversion.tests.cpp \
 	fastIO.cpp             \
 	getGeno.cpp            \
@@ -29,13 +25,6 @@ SRC =  bfileOperations.cpp \
 	LDinspect.cpp
 
 SUBDIRS = stats
-
-
-
-
-
-
-
 
 OBJ = $(SRC:.cpp=.o)
 
@@ -53,7 +42,7 @@ $(OUTPUT) : ${SUBDIRS}
 $(OBJ) : $(HDR)
 
 .cpp.o : 
-	        $(CXX) $(PKG_CPPFLAGS)  -c $*.cpp 
+	$(CXX) $(PKG_CPPFLAGS)  -c $*.cpp 
 .SUFFIXES : .cpp .c .o $(SUFFIXES)
 
 
@@ -63,23 +52,11 @@ FORCE:
 
 clean: 
 	rm -f *.o
+	rm -f *.a
 	for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
-			
-
-run : 
-	$(CXX) -o tt  tt.cpp ./lib/libLDinspect.a   -DUSEDOUBLE -g3 -m64  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl 
-	./tt
 
 
-install:
-	#cp lib/libLDinspect.a /home/uqwche11/work/SMR_source/smr0.866/lib/
-	cp lib/libLDinspect.a  ../DENTIST/lib/
-
-test:
-	for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir; \
-	done
 
 .PHONY: all $(SUBDIRS)
