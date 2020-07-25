@@ -184,8 +184,8 @@ BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
     for (uint i = 0; i < this->maf.size(); i ++)
         if( (this->maf[i] <= 0.5 && this->maf[i] > minMaf) ||  (this->maf[i] > 0.5 && 1- this->maf[i] > minMaf)  )
             this->include.push_back(i);
-
-
+    if(std::find(this->maf.begin(), this->maf.end(), 0) != this->maf.end())
+        stop("[error]  A SNP(s) with maf of 0 is found.\n");
 }
 
 

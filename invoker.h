@@ -6,9 +6,6 @@
 
 //#include <template>
 using namespace std;
-typedef unsigned int uint;
-typedef unsigned char uchar;
-
 template<class T>  int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx,
         uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,T* result, int* jump, int* withNA);
 /// 

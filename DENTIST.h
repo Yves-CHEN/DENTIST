@@ -821,7 +821,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
 
 void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>& perSNPsampleSize, vector<long int>& seqNo, vector<bool>& toFlip, vector<string>& rsID,vector<uint>& bp, string outFilePrefix )
 {
-    printf("[info] Aligning GWAS to bedfile assumming the bfile SNPs are ordered by BP.\n");
+    printf("[info] Aligning GWAS to the reference sample assumming both files are ordered.\n");
     vector<long int> alignToWhich (gtab.size(), -1);
     vector<bool    > haveFliped   (gtab.size(), false);
     int ncpus= omp_get_num_threads();
@@ -877,7 +877,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
 
     }
     exclOut.close();
-    printf("[info] %d SNPs (rsID) were shared between the summary and reference data. \n", sum);
+    printf("[info] Performing DENTIST at %d SNPs shared between the summary and reference data. \n", sum);
     btab.include = include_tmp;
 
 
@@ -930,7 +930,7 @@ void runSummaryImpute(const Options& opt)
             printf("[Warning] The target SNP [%s] is not found.\n", opt.targetSNP.c_str() );
             if(opt.ignoreWarnings == false) exit(-1);
         }
-        printf("[info] %d were exracted.\n", ref.include.size());
+        printf("[info] %d SNPs are extracted at the target region.\n", ref.include.size());
     }
 
     // apply extraction
@@ -1017,7 +1017,29 @@ void runQC(const Options& opt)
     }
     else
         ref  = BedFile(bfileName, opt.mafThresh, opt.thread_num); // read bedfile
+
+    if(opt.targetSNP != "" && opt.targetBP != -1)
+    {
+        stop("[error] both --target and --target-bp were set, when only one is needed. \n");
+    }
+    if(opt.targetBP != -1)
+    {
+        D(cout << "Extracting SNPs at the target SNP : " << opt.targetBP << endl;);
+        vector<uint> updatedInclude;
+        for (uint kk =0; kk < ref.include.size(); kk ++)
+        {
+            uint  i = ref.include[kk];
+            if(fabs( ref.bp[i] -  opt.targetBP ) <= opt.radius)
+                updatedInclude.push_back(i);
+        }
+        ref.include = updatedInclude;
+        printf("[info] %d SNPs are extracted at the target region.\n", ref.include.size());
+        if(ref.include.size() <10)
+            stop("[error] less than 10 SNPs has left at the target region.\n");
+
+    }
         
+    
     if(opt.targetSNP != "")
     {
         D(cout << "Extracting SNPs at the target SNP : " << opt.targetSNP << endl;);
@@ -1037,7 +1059,7 @@ void runQC(const Options& opt)
             for (uint kk =0; kk < ref.include.size(); kk ++)
             {
                 uint  i = ref.include[kk];
-                if(fabs( ref.bp[i] -  ref.bp[foundAt] ) <= 10e6)
+                if(fabs( ref.bp[i] -  ref.bp[foundAt] ) <= opt.radius)
                     updatedInclude.push_back(i);
             }
             ref.include = updatedInclude;
@@ -1047,7 +1069,12 @@ void runQC(const Options& opt)
             printf("[Warning] The target SNP [%s] is not found.\n", opt.targetSNP.c_str() );
             if(opt.ignoreWarnings == false) exit(-1);
         }
-        printf("[info] %d were exracted.\n", ref.include.size());
+        printf("[info] %d SNPs remain after --target.\n", ref.include.size());
+
+        if(ref.include.size() <10)
+            stop("[error] less than 10 SNPs has left at the target region.\n");
+
+
     }
 
     // apply extraction

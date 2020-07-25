@@ -17,6 +17,8 @@ public:
     double pValueThreshold;
     double deltaMAF;
     string targetSNP   ;
+    int64_t targetBP;
+    int64_t radius;
     string extractFile;
     bool   ignoreWarnings ;
     int    withNA;
@@ -137,6 +139,11 @@ public:
         flags.push_back("--extract");
         targetSNP = "";
         flags.push_back("--target");
+        targetBP = -1;
+        flags.push_back("--target-bp");
+        radius   = 10e6;
+        flags.push_back("--radius");
+
         withNA = 0;
         flags.push_back("--with-NA-geno");
         maxDist = 2000000;           // 2Mb by default
@@ -347,7 +354,7 @@ void Options::parseOptions(int nArgs, char* option_str[])
         if(strcmp(option_str[i], "--maf") == 0)
         {
             mafThresh = atof ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--maf"), bfileName.c_str());
+            Options::FLAG_VALID_CK(string("--maf"), option_str[i] );
             cout<< option_str[i-1] << " " <<  mafThresh <<endl;
         }
 
@@ -355,23 +362,42 @@ void Options::parseOptions(int nArgs, char* option_str[])
         if(strcmp(option_str[i], "--wind-dist") == 0)
         {
             maxDist = atof ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--wind-dist"), bfileName.c_str());
+            Options::FLAG_VALID_CK(string("--wind-dist"), option_str[i] );
             cout<< option_str[i-1] << " " <<  maxDist <<endl;
         }
 
         if(strcmp(option_str[i], "--wind") == 0)
         {
             maxDim = atof ( option_str[++i] );
-            Options::FLAG_VALID_CK(string("--wind"), bfileName.c_str());
+            Options::FLAG_VALID_CK(string("--wind"), option_str[i] );
             cout<< option_str[i-1] << " " <<  maxDim <<endl;
         }
-
+        
         if(strcmp(option_str[i], "--target") == 0)
         {
             targetSNP = ( option_str[++i] );
             Options::FLAG_VALID_CK(string("--target"), targetSNP.c_str());
             cout<< option_str[i-1] << " " <<  targetSNP <<endl;
         }
+        if(strcmp(option_str[i], "--target-bp") == 0)
+        {
+            std::istringstream ss(option_str[++i]);
+            if (!(ss >> targetBP))
+                stop("Fail to convert --target <value> into int64\n");
+            Options::FLAG_VALID_CK(string("--target-bp"), option_str[i] );
+            cout<< option_str[i-1] << " " <<  targetBP <<endl;
+        }
+        if(strcmp(option_str[i], "--radius") == 0)
+        {
+            std::istringstream ss(option_str[++i]);
+            if (!(ss >> radius))
+                stop("Fail to convert --target <value> into int64\n");
+            Options::FLAG_VALID_CK(string("--radius"), option_str[i] );
+            cout<< option_str[i-1] << " " <<  radius <<endl;
+        }
+
+
+
         if(strcmp(option_str[i], "--extract") == 0)
         {
             extractFile = ( option_str[++i] );
@@ -412,7 +438,7 @@ void Options::parseOptions(int nArgs, char* option_str[])
         if(strcmp(option_str[i], "--SVD-trunc-prop") == 0)
         {
             propPCtrunc = atof(option_str[++i]);
-            //Options::FLAG_VALID_CK(string("--SVD-trunc-prop"), bfileName.c_str());
+            Options::FLAG_VALID_CK(string("--SVD-trunc-prop"), option_str[i] );
             cout<< option_str[i-1] << " " <<  propPCtrunc <<endl;
             if(propPCtrunc <= 0 || propPCtrunc > 1)
                 stop("[errors] --SVD-trunc-prop expects a number between (0,1].\n");

@@ -14,6 +14,7 @@
 #include <omp.h>
 #include <string> 
 #include <vector> 
+#include <cstdint>
 #include "main/storage.h"
 
 
@@ -22,8 +23,11 @@
 using namespace std;
 
 //typedef  float LDType;
-typedef  double LDType;
-typedef  boost::numeric::ublas::symmetric_matrix<double, boost::numeric::ublas::upper> LDType2;
+//
+typedef unsigned int  uint;
+typedef unsigned char uchar;
+typedef double        LDType;
+typedef boost::numeric::ublas::symmetric_matrix<double, boost::numeric::ublas::upper> LDType2;
 
 
 const uint maxSummaryRowSize = 1000000;

@@ -13,10 +13,10 @@ Chen et al. (2020) Improved analyses of GWAS summary statistics by eliminating h
 # Downloads
 ### Pre-compiled Executable Files 
 The executable file below is compiled with "-static" and tested on 64-bit Linux distributions on the x86_64 CPU platform,
-[DENTIST  0.9.0.1](https://www.dropbox.com/s/ua19o3ki4egadwe/DENTIST.0.9.0.1.tar.gz?dl=0)
+[DENTIST  0.9.1.1](https://www.dropbox.com/s/05sbky2dwihs1b8/DENTIST.0.9.1.1.gz?dl=0)
 
 To download, you can run,
-> curl -o DENTIST.tar.gz https://www.dropbox.com/s/ua19o3ki4egadwe/DENTIST.0.9.0.1.tar.gz?dl=0
+> wget -O DENTIST.gz https://www.dropbox.com/s/05sbky2dwihs1b8/DENTIST.0.9.1.1.gz?dl=0
 
 
 # Basic usage
