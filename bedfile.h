@@ -181,11 +181,21 @@ BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
     this->N = N;
     this->maf = calcMaf (bfileName, N, M, ncpus);
 
-    for (uint i = 0; i < this->maf.size(); i ++)
+
+    decltype(this->maf) tmpMaf = this->maf;
+    for (uint i = 0; i < this->maf.size(); i ++) 
+    {
         if( (this->maf[i] <= 0.5 && this->maf[i] > minMaf) ||  (this->maf[i] > 0.5 && 1- this->maf[i] > minMaf)  )
+        {
             this->include.push_back(i);
-    if(std::find(this->maf.begin(), this->maf.end(), 0) != this->maf.end())
+            tmpMaf.push_back(this->maf[i]);
+        }
+    }
+    
+
+    if(std::find(tmpMaf.begin(), tmpMaf.end(), 0) != tmpMaf.end())
         stop("[error]  A SNP(s) with maf of 0 is found.\n");
+
 }
 
 
@@ -212,11 +222,11 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     // **************************************************************
     //                     Variables
     // **************************************************************
-    typedef unsigned short dataType;
+    typedef unsigned char dataType;
     uint processSamplePerRound = sizeof(dataType)*8 /2;
     //uint perMakerSize = ceil ( (nSample) / 1.0 / processSamplePerRound );
     uint perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
-    uint perMakerSize = int( (nSample) / 1.0 / processSamplePerRound );
+    uint perMakerSize = ceil( (nSample) / 1.0 / processSamplePerRound );
     uint nBlanks   = ( processSamplePerRound - (nSample) %
                 processSamplePerRound  ) % processSamplePerRound; //
     long lSize =0;
@@ -346,14 +356,12 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
                 nMissing += countOnes[(dataType)(~marker)];
                 sum_i    += countOnes[GENO_i [k] & marker];
             }
-            E_i         = double(sum_i  ) / (nKeptSample - nMissing);
-            maf[startingIdx[block_i] + i] = 1- E_i / 2;
+            E_i         = double(sum_i  ) / (nKeptSample - nMissing - nBlanks);
+            maf[startingIdx[block_i] + i] =  E_i / 2;
         }
         delete [] bufferAllMarkers;
         delete [] GENO;
     }
-
-
     return maf;
 
 };

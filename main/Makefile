@@ -9,9 +9,9 @@ LIBTOOL = libtool --mode=link cc -static
 
 
 ifeq ($(product), T)
-	PKG_CPPFLAGS =  -m64 -I./stats/  -I$(BOOST_PATH)  -I$(MKLROOT)/include -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL
+	PKG_CPPFLAGS =  -m64 -I./stats/  -I$(BOOST_PATH)  -I$(MKLROOT)/include  -DMKL_ILP64 -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL
 else
-	PKG_CPPFLAGS =  -m64 -I./stats/  -I$(BOOST_PATH)  -I$(MKLROOT)/include -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL -DDEBUG_DENTIST
+	PKG_CPPFLAGS =  -m64 -I./stats/  -I$(BOOST_PATH)  -I$(MKLROOT)/include  -DMKL_ILP64 -I$(EIGEN3_INCLUDE_DIR)  -I. -DEIGEN_NO_DEBUG -DUSEDOUBLE    -DNDEBUG   -fpic  -g -O3   -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL -DDEBUG_DENTIST
 endif
 
 PKG_LIBS =    $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a  $(MKLROOT)/lib/intel64/libmkl_gnu_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a
@@ -24,7 +24,6 @@ CXXFLAGS = -w -O3 -m64 -fopenmp -I $(EIGEN3_INCLUDE_DIR)  -I $(MKLROOT)/include
 HDR += *.h 
 SRC =  bfileOperations.cpp \
 	storage.cpp \
-	calInversion.tests.cpp \
 	fastIO.cpp             \
 	getGeno.cpp            \
 	inversion.cpp          \

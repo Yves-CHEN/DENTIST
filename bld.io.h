@@ -47,7 +47,7 @@ void findRight(const int* bp, int dim, vector<int>& right, int wind)
     for (int i =1; i < dim; i ++)
         while (bp[i] > bp[j] + wind )
             right[j++] = i; 
-    while(j != dim -1)  // fills the last bit at end of the vector
+    while(j != dim )  // fills the last bits at end of the vector
         right[j++] = dim ;
 }
 
@@ -117,14 +117,14 @@ int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, 
     if(!fully)
     {
         for (atIdx =0; atIdx < dim; atIdx ++)
-            if(right[atIdx] == dim+1) 
+            if(right[atIdx] == dim) 
                 break;
     }
     else
         atIdx = dim;
     /// write index
     for(int i =0; i < atIdx;i ++)
-        idxfile << ref.print(startIdx +i) << "\t" << i + startIdx << "\t" << right[i] 
+        idxfile <<  ref.print(startIdx +i) << "\t" << i + startIdx << "\t" << right[i] 
             << "\t" << right[i] - i << endl;
     /// write dat
     for(int i =0; i < atIdx;i ++)
@@ -372,8 +372,8 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
         string cbuf = "0";
         double dbuf = 0.0;
         string str_buf;
-        //while (idxfile >> snpIdx  >> ridx >> dist)  // expect 3-column file format
-        while(idxfile >> str_buf >> str_buf >> dbuf >> ibuf >> cbuf >> cbuf >> snpIdx  >> ridx >> dist)
+        //while(idxfile >> str_buf >> str_buf >> dbuf >> ibuf >> cbuf >> cbuf >> snpIdx  >> ridx >> dist)
+        while (idxfile >> snpIdx  >> ridx >> dist)  // expect 3-column file format
         {
             loc.push_back(sum ); 
             // *sizeof(LDTtype) :  multiply number of bytes to jump to next_i

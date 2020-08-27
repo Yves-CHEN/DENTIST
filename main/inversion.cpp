@@ -17,151 +17,151 @@ T getQuantile(const std::vector<T>& dat, double whichQuantile)
      return (threshold);
 }
 
+// 
+// 
+// extern "C"
+// {
+//     bool calInversion(double* Vi_mkl, double* b, int* size, int* msg, int* ncpus)
+//     {
+//         int nProcessors = omp_get_max_threads();
+//         if(nProcessors > *ncpus) nProcessors = *ncpus;
+//         omp_set_num_threads(nProcessors );
+//         printf("[info] matrix inversion based on %d cpus \n", nProcessors);
+//         int  N =*size;
+//         int ipiv[N];
+//         struct timespec start, finish;
+//         double elapsed;
+//         clock_gettime(CLOCK_MONOTONIC, &start);
+//         dgesv( &N, &N, Vi_mkl, &N, ipiv, b, &N, msg);
+//         clock_gettime(CLOCK_MONOTONIC, &finish);
+//         elapsed = (finish.tv_sec - start.tv_sec);
+//         elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+//         D(printf("Time taken %f seconds.\n", elapsed););
+// 
+//         if( *msg > 0 ) {
+//                 printf( "[error] The diagonal element of the triangular factor of A,\n" );
+//                 printf( "        U(%i,%i) is zero, so that A is singular;\n", *msg, *msg);
+//                 printf( "        the solution could not be computed.\n" );
+//                 exit(-1);
+//         }
+//         return 0;
+//     }
+// }
+// 
+// 
 
 
-extern "C"
-{
-    bool calInversion(double* Vi_mkl, double* b, int* size, int* msg, int* ncpus)
-    {
-        int nProcessors = omp_get_max_threads();
-        if(nProcessors > *ncpus) nProcessors = *ncpus;
-        omp_set_num_threads(nProcessors );
-        printf("[info] matrix inversion based on %d cpus \n", nProcessors);
-        int  N =*size;
-        int ipiv[N];
-        struct timespec start, finish;
-        double elapsed;
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        dgesv( &N, &N, Vi_mkl, &N, ipiv, b, &N, msg);
-        clock_gettime(CLOCK_MONOTONIC, &finish);
-        elapsed = (finish.tv_sec - start.tv_sec);
-        elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-        D(printf("Time taken %f seconds.\n", elapsed););
-
-        if( *msg > 0 ) {
-                printf( "[error] The diagonal element of the triangular factor of A,\n" );
-                printf( "        U(%i,%i) is zero, so that A is singular;\n", *msg, *msg);
-                printf( "        the solution could not be computed.\n" );
-                exit(-1);
-        }
-        return 0;
-    }
-}
 
 
-
-
-
-
-bool imputeOneZscore(double* Vi_mkl, double* imputeToTest, double* zscore, double* bb, int* size, double* res, int* cpus)
-{
-    int N = *size;
-    const float lambda = 0.001;
-
-    double backup[N*N];
-
-#pragma omp parallel for 
-        for (unsigned i =0; i < N; i ++)
-            for (unsigned j =0; j < N; j ++)
-                backup[i*N + j] = Vi_mkl[i*N + j] ;
-
-    for (unsigned i =0; i < N; i ++) Vi_mkl [i*N+ i] += 0.001;
-    int msg = 0;
-    calInversion(Vi_mkl,  bb, size, &msg, cpus);
-    double imputed_se = 0;
-    double beta [N] = {};
-    double imputed = 0;
-#pragma omp parallel for reduction(+:imputed)
-    for (unsigned i =0; i < N; i ++)
-    {
-        for (unsigned j =0; j < N; j ++)
-            beta[i] += bb[i*N + j] * imputeToTest[j];
-        imputed +=  beta[i] * zscore[i];
-    }
-           
-#pragma omp parallel for reduction(+:imputed_se)
-    for (unsigned i =0; i < N; i ++)
-    {
-        imputed_se  +=  beta[i] * imputeToTest[i];
-    }
-
-    if(imputed_se < 1e-6)
-    {
-        printf("zScore %f, var %f \n", imputed,  imputed_se);
-        exit(-1);
-    }
-    res[0] = imputed ;
-    res[1] = sqrt(imputed_se);
-    return 0;
-}
+// bool imputeOneZscore(double* Vi_mkl, double* imputeToTest, double* zscore, double* bb, int* size, double* res, int* cpus)
+// {
+//     int N = *size;
+//     const float lambda = 0.001;
+// 
+//     double backup[N*N];
+// 
+// #pragma omp parallel for 
+//         for (unsigned i =0; i < N; i ++)
+//             for (unsigned j =0; j < N; j ++)
+//                 backup[i*N + j] = Vi_mkl[i*N + j] ;
+// 
+//     for (unsigned i =0; i < N; i ++) Vi_mkl [i*N+ i] += 0.001;
+//     int msg = 0;
+//     calInversion(Vi_mkl,  bb, size, &msg, cpus);
+//     double imputed_se = 0;
+//     double beta [N] = {};
+//     double imputed = 0;
+// #pragma omp parallel for reduction(+:imputed)
+//     for (unsigned i =0; i < N; i ++)
+//     {
+//         for (unsigned j =0; j < N; j ++)
+//             beta[i] += bb[i*N + j] * imputeToTest[j];
+//         imputed +=  beta[i] * zscore[i];
+//     }
+//            
+// #pragma omp parallel for reduction(+:imputed_se)
+//     for (unsigned i =0; i < N; i ++)
+//     {
+//         imputed_se  +=  beta[i] * imputeToTest[i];
+//     }
+// 
+//     if(imputed_se < 1e-6)
+//     {
+//         printf("zScore %f, var %f \n", imputed,  imputed_se);
+//         exit(-1);
+//     }
+//     res[0] = imputed ;
+//     res[1] = sqrt(imputed_se);
+//     return 0;
+// }
 
 
 ///
 /// 
-bool impVecOfZscore(double* LDmat, double* zScore, int* markerSize, int* winSize, double* resVecImp, double* seImp, int* ncpus)
-{
-
-    struct timespec start, finish;
-    double elapsed;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    int halfWinSize = int((*winSize -1) / 2.0);
-    int startIdx    = halfWinSize ;
-    int endIdx      = *markerSize - halfWinSize ;
-    int MM          = halfWinSize * 2 ;
-    // checking winSize and markerSize
-    if(startIdx >= endIdx)
-        printf("[error] The markerSize (%d) is not smaller than winSize (%d)", *markerSize, *winSize ), exit(-1);
-    int nProcessors = omp_get_max_threads();
-    //if(nProcessors > *ncpus) nProcessors = *ncpus;
-    nProcessors = *ncpus;
-    mkl_set_num_threads( *ncpus );
-    printf("[info]  DENTIST based on %d cpus \n", nProcessors);
-    // create subset of matrix
-    double* subLDmat     = new double [ MM * MM] ; // variable array size is only allowed by g++
-    double* subZscore    = new double [ MM ] ; // variable array size is only allowed by g++
-    double* imputeToTest = new double [ MM ] ; // variable array size is only allowed by g++
-    double* bb = (double*) calloc(MM * MM, sizeof(double)); // Diag mat
-    for (unsigned i =0; i < MM; i ++) bb [i*MM+ i] =1;
-
-    for (unsigned i = startIdx; i < endIdx ; i ++)
-    {
-        for (unsigned j = i-halfWinSize, m =0; j <= i + halfWinSize; j ++, m ++)
-        {
-            if (j == i) { m --; continue; }
-            subZscore    [m] = zScore[j];
-            imputeToTest [m] = LDmat[i*(*markerSize) + j];
-            for (unsigned k = i -halfWinSize, n = 0; k <= i + halfWinSize; k ++, n ++)
-            {
-                if(k == i) {n --; continue;}
-                subLDmat[m*MM + n ]  = LDmat[j*(*markerSize) + k ] ;
-            }
-        }
-        int tmpSize = halfWinSize *2;
-        double res[2] = {0, 0};
-        imputeOneZscore(subLDmat, imputeToTest, subZscore, bb, &tmpSize,  res, ncpus);
-        resVecImp[i] = res[0];
-        seImp[i] = res[1];
-
-#pragma omp parallel for 
-        for (unsigned j =0; j < MM; j ++) 
-            for (unsigned k =0; k < MM; k ++) 
-            {
-                bb [j*MM+ k] = 0;
-                if (j == k ) bb  [j*MM+ k] = 1;
-            }
-
-    }
-    delete[] subLDmat;
-    delete[] subZscore;
-    delete[] imputeToTest;
-    free(bb);
-    clock_gettime(CLOCK_MONOTONIC, &finish);
-    elapsed = (finish.tv_sec - start.tv_sec);
-    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-    D(printf("Time taken %f seconds", elapsed););
-
-    return (0);
-}
+// bool impVecOfZscore(double* LDmat, double* zScore, int* markerSize, int* winSize, double* resVecImp, double* seImp, int* ncpus)
+// {
+// 
+//     struct timespec start, finish;
+//     double elapsed;
+//     clock_gettime(CLOCK_MONOTONIC, &start);
+//     int halfWinSize = int((*winSize -1) / 2.0);
+//     int startIdx    = halfWinSize ;
+//     int endIdx      = *markerSize - halfWinSize ;
+//     int MM          = halfWinSize * 2 ;
+//     // checking winSize and markerSize
+//     if(startIdx >= endIdx)
+//         printf("[error] The markerSize (%d) is not smaller than winSize (%d)", *markerSize, *winSize ), exit(-1);
+//     int nProcessors = omp_get_max_threads();
+//     //if(nProcessors > *ncpus) nProcessors = *ncpus;
+//     nProcessors = *ncpus;
+//     mkl_set_num_threads( *ncpus );
+//     printf("[info]  DENTIST based on %d cpus \n", nProcessors);
+//     // create subset of matrix
+//     double* subLDmat     = new double [ MM * MM] ; // variable array size is only allowed by g++
+//     double* subZscore    = new double [ MM ] ; // variable array size is only allowed by g++
+//     double* imputeToTest = new double [ MM ] ; // variable array size is only allowed by g++
+//     double* bb = (double*) calloc(MM * MM, sizeof(double)); // Diag mat
+//     for (unsigned i =0; i < MM; i ++) bb [i*MM+ i] =1;
+// 
+//     for (unsigned i = startIdx; i < endIdx ; i ++)
+//     {
+//         for (unsigned j = i-halfWinSize, m =0; j <= i + halfWinSize; j ++, m ++)
+//         {
+//             if (j == i) { m --; continue; }
+//             subZscore    [m] = zScore[j];
+//             imputeToTest [m] = LDmat[i*(*markerSize) + j];
+//             for (unsigned k = i -halfWinSize, n = 0; k <= i + halfWinSize; k ++, n ++)
+//             {
+//                 if(k == i) {n --; continue;}
+//                 subLDmat[m*MM + n ]  = LDmat[j*(*markerSize) + k ] ;
+//             }
+//         }
+//         int tmpSize = halfWinSize *2;
+//         double res[2] = {0, 0};
+//         imputeOneZscore(subLDmat, imputeToTest, subZscore, bb, &tmpSize,  res, ncpus);
+//         resVecImp[i] = res[0];
+//         seImp[i] = res[1];
+// 
+// #pragma omp parallel for 
+//         for (unsigned j =0; j < MM; j ++) 
+//             for (unsigned k =0; k < MM; k ++) 
+//             {
+//                 bb [j*MM+ k] = 0;
+//                 if (j == k ) bb  [j*MM+ k] = 1;
+//             }
+// 
+//     }
+//     delete[] subLDmat;
+//     delete[] subZscore;
+//     delete[] imputeToTest;
+//     free(bb);
+//     clock_gettime(CLOCK_MONOTONIC, &finish);
+//     elapsed = (finish.tv_sec - start.tv_sec);
+//     elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+//     D(printf("Time taken %f seconds", elapsed););
+// 
+//     return (0);
+// }
 
 bool printMat (double* mat, int nrow, int ncol)
 {
@@ -254,10 +254,12 @@ bool multiRegress(double* matXY, int* dimMat1, double* matV, int* dimMat2, doubl
 
 
 template <class T>
-void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2, double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float probSVD, int* ncpus)
+void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& idx, std::vector<uint>& idx2,
+        double* imputedZ, double* rsqList, double* zScore_e, uint nSample, float probSVD, int* ncpus)
 {
     omp_set_num_threads(*ncpus);
     Eigen::setNbThreads(*ncpus);
+    Eigen::initParallel();
     uint K = std::min(uint(idx.size()),nSample) * probSVD;
     //double* LDmatSubset = new double[idx.size() * idx.size()];
     Eigen::MatrixXd LD_it (idx2.size(),idx.size() );
