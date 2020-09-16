@@ -49,7 +49,7 @@ public:
 
 GWAS::GWAS(BedFile& btab)
 {
-    for (uint i = 0; i < btab.include.size(); i ++)
+    for (size_t i = 0; i < btab.include.size(); i ++)
     {
         uint j = btab.include[i];
         rs.push_back( btab.rs[j]);
@@ -70,7 +70,7 @@ bool GWAS::fillGWAS (GWAS& gtab)
         id_map [ gtab.rs[i] ] = i;
 
 
-    for (uint j =0 ; j < this->rs.size(); j ++)
+    for (size_t j =0 ; j < this->rs.size(); j ++)
     {
         iter = id_map.find(rs[j]);
         if(iter != id_map.end() )
@@ -95,7 +95,6 @@ bool GWAS::fillGWAS (GWAS& gtab)
             } 
         }
     }
-    std::cout << "finished" << std::endl;
 
     return 0;
 };
@@ -240,22 +239,21 @@ map<string, double> createMap(const vector<string>& rsID, const vector<double>& 
 }
 
 void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip,
-        vector<string>& rsID,vector<uint>& bp,  vector<long int>& seqNo,
+        vector<string>& rsID,vector<uint>& bp,  vector<int64>& seqNo,
         vector<double>& zScores, vector<uint>& perSNP_N, string outFilePrefix )
 {
     auto m1 = createMap (gwas.rs, gwas.maf, gwas.A1, gwas.A2);
     auto m2 = createMap (ref.rs, ref.maf, ref.A1, ref.A2);
-
     vector<bool>   toFlip_tmp ;
     vector<string> rsID_tmp   ;
     vector<uint>   bp_tmp     ;
-    vector<long int>   seqNo_tmp     ;
+    vector<int64>   seqNo_tmp;
     vector<double>   zScore_tmp;
     vector<uint>   perSNP_N_tmp;
 
     vector<uint> updatedInclude;
     int before = 0;
-    for (uint kk =0; kk < ref.include.size(); kk ++)
+    for (size_t kk =0; kk < ref.include.size(); kk ++)
     {
         uint  i = ref.include[kk];
         string key = "";
@@ -272,7 +270,7 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
     msg.push_back("notFoundInReference");
     msg.push_back("AF_QC");
 
-    for (uint kk =0; kk < ref.include.size(); kk ++)
+    for (size_t kk =0; kk < ref.include.size(); kk ++)
     {
         uint  i = ref.include[kk];
         string key = "";
@@ -308,8 +306,6 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
     zScores = zScore_tmp    ;
     perSNP_N = perSNP_N_tmp    ;
 
-
-
     ref.include = updatedInclude;
     printf("[info] %d (%.1f%%) SNPs were filtered when applying deltaMaf %f. %d retained. \n",  before - ref.include.size(),  (before - ref.include.size() ) * 1.0 * 100/ before, threshold, ref.include.size());
 
@@ -340,11 +336,11 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
 /// 
 
 
-uint moveKeep(double* LD, uint arrSize, uint currentDim, uint keepFromIdx)
+uint moveKeep(double* LD, size_t arrSize, size_t currentDim, size_t keepFromIdx)
 {
     uint m = 0;
-    for (uint i = keepFromIdx; i < arrSize ; i ++, m ++ )
-        for (uint j = keepFromIdx, n = 0; j < arrSize ; j ++, n ++ )
+    for (size_t i = keepFromIdx; i < arrSize ; i ++, m ++ )
+        for (size_t j = keepFromIdx, n = 0; j < arrSize ; j ++, n ++ )
             LD[m *  currentDim + n ] = LD[i * arrSize + j];
     return m;
 }
@@ -376,10 +372,10 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
 
     // The most distant neighbor for i, given the distance cutoff.
     vector<int> nextIdx;
-    for (uint i =1; i < bp.size(); i ++ )
+    for (size_t i =1; i < bp.size(); i ++ )
         if(bp[i] - bp[0] >= cutoff || i == bp.size()-1 ) {nextIdx.push_back(i); break;}
-    for (uint i =1; i < bp.size() ; i ++ ) {
-        uint j = nextIdx[nextIdx.size() -1];
+    for (size_t i =1; i < bp.size() ; i ++ ) {
+        auto j = nextIdx[nextIdx.size() -1];
         while( bp[j] - bp[i] < cutoff) {
             if(j >= bp.size()-1 ) break;
             j ++;
@@ -389,10 +385,10 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
 
     // A quater of distance cutoff away from i.
     vector<int> quaterIdx;
-    for (uint i =1; ; i ++ )
+    for (size_t i =1; ; i ++ )
         if(i == bp.size() || bp[i] - bp[0] >= cutoff/4 ) { quaterIdx.push_back(i-1); break;}
-    for (uint i =1; i < bp.size() ; i ++ ) {
-        uint j = quaterIdx[quaterIdx.size() -1];
+    for (size_t i =1; i < bp.size() ; i ++ ) {
+        auto j = quaterIdx[quaterIdx.size() -1];
         while(bp[j] < cutoff/4 + long(bp[i]) && j < bp.size() ) {
             j ++;
         }
@@ -412,20 +408,19 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
     allGaps.push_back(0);
     uint gapSizeThresh =  cutoff/4 ;
     if(gapSizeThresh > cutoff) gapSizeThresh = cutoff;
-    for (uint i = 1; i < diff.size(); i ++)  
+    for (size_t i = 1; i < diff.size(); i ++)  
     {
         if(diff[i] > gapSizeThresh) 
         {
             allGaps.push_back(i);
-            //cout << i-1 << ", " << bp [i-1] <<  ", " << bp[i] << ", " << diff[i] << endl;
         }
     }
     allGaps.push_back(diff.size());
 
     int times = 0;
-    for (uint k = 0; k < allGaps.size() -1; k ++)
+    for (size_t k = 0; k < allGaps.size() -1; k ++)
     {
-        uint rangeSize = allGaps[k+1];
+        auto rangeSize = allGaps[k+1];
         if(rangeSize < minBlockSize /2) continue;
         if(rangeSize  - minDim < 0) continue;
         int  startIdx = allGaps[k], endIdx = allGaps[k+1]; 
@@ -435,7 +430,6 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
         do
         {
             if(times ++ > 400) stop("p");
-            //cout << "k:" << k << ", " << startIdx << ", " << endIdx <<  ", " << rangeSize <<endl;
             //  save
             fillStartList.push_back(quaterIdx[startIdx] ); // one quater of dist cutoff away
             fillEndList.push_back(quaterIdx[quaterIdx[quaterIdx[startIdx] ]] ); // three quaters of dist cutoff away
@@ -459,7 +453,7 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
 
     fillStartList [0] = startList[0];
     fillEndList [fillEndList.size()-1] = endList[endList.size() -1];
-    for (uint i = 0; i < startList.size(); i ++)
+    for (size_t i = 0; i < startList.size(); i ++)
         cout << startList[i] << "-" << endList[i] << ", " << bp[endList[i]-1] - bp[startList[i]] << ", " << allGaps[0] <<std::endl;
 
 }
@@ -467,7 +461,7 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
 class ImputeOperator
 { 
 public:
-    uint  *   seqNos    ;
+    int64 *   seqNos    ;
     double*   zScores   ;
     string*   rsIDs     ;
     uint  *   toAvert   ;
@@ -477,12 +471,12 @@ public:
     bool  *   ifDup     ;
     double*   sigma_ii_sq;
     
-    inline ImputeOperator ( vector<long  >   seqNos , vector<double>  zScores,    
-            vector<string>   rsIDs    , vector<bool  >   toAvert  ,
-            vector<double>   imputed  , vector<double>   rsq      ,
-            vector<double>   zScores_e, vector<bool  >   ifDup     )
+    inline ImputeOperator ( vector<int64>&   seqNos , vector<double>&  zScores,    
+            vector<string>&   rsIDs    , vector<bool  >&   toAvert  ,
+            vector<double>&   imputed  , vector<double>&   rsq      ,
+            vector<double>&   zScores_e, vector<bool  >&   ifDup     )
     {
-        this->seqNos   = new uint  [zScores.size()]();
+        this->seqNos   = new int64 [zScores.size()]();
         this->zScores  = new double[zScores.size()]();
         this->rsIDs    = new string[zScores.size()]();
         this->toAvert  = new uint  [zScores.size()]();
@@ -516,12 +510,12 @@ public:
 };
 
 template<class T>
-void loadLDFromBLD (string bldLDFile, uint* seqNos, vector<bool>& flipped, uint startIdx, uint endIdx, T* LD)
+void loadLDFromBLD (string bldLDFile, int64* seqNos, vector<bool>& flipped, uint startIdx, uint endIdx, T* LD)
 {
     cout << "bldLDFile" << bldLDFile << endl;
 
     bool ifPrint = false;
-    int dim = long(seqNos[endIdx-1]) - long(seqNos[startIdx]) +1;
+    int dim = (seqNos[endIdx-1]) -(seqNos[startIdx]) +1;
     assert (theMaxDim > dim +1);
     double* LDFromFile = readLDFromFile_FromTo(bldLDFile,
             dim , seqNos[startIdx], seqNos[endIdx-1] +1, ifPrint);
@@ -529,16 +523,16 @@ void loadLDFromBLD (string bldLDFile, uint* seqNos, vector<bool>& flipped, uint 
     vector<long> toAvert; // target seqNos in bed, relative the 0th seqNo.
     toAvert.resize(endIdx - startIdx);
     rtSeqNos.resize(endIdx - startIdx);
-    for (uint i = startIdx; i < endIdx; i ++) {
+    for (auto i = startIdx; i < endIdx; i ++) {
         rtSeqNos[i - startIdx] = (seqNos[i] - seqNos[startIdx] );
         if(flipped[i] == 0)
             toAvert [i - startIdx] = 1;
         else 
             toAvert [i - startIdx] = -1;
     }
-    for (uint i =0; i < rtSeqNos.size(); i ++)
+    for (size_t i =0; i < rtSeqNos.size(); i ++)
     {
-        for (uint j =0; j < rtSeqNos.size(); j ++)
+        for (size_t j =0; j < rtSeqNos.size(); j ++)
         {
             int sign = toAvert[i] * toAvert[j];
             saveData<T>(LDFromFile [rtSeqNos[i] * dim + rtSeqNos[j] ] *sign, i, j,LD, rtSeqNos.size());
@@ -554,7 +548,7 @@ void loadLDFromBLD (string bldLDFile, uint* seqNos, vector<bool>& flipped, uint 
 }
 void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
         uint nMarkers, vector<string>& rsIDs,vector<uint>& bp,
-        vector<double>& zScores, vector<uint> perSNP_N, vector<long int>& seqNos,
+        vector<double>& zScores, vector<uint> perSNP_N, vector<int64>& seqNos,
         vector<bool>& flipped, const Options& opt)
 {
     // **********************************************************************
@@ -586,16 +580,21 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
     vector<bool>    ifDup   (zScores.size(), false);
 
     ImputeOperator impOp( seqNos,  zScores, rsIDs, flipped, 
-                            imputed, rsq, zscore_e, ifDup   ); 
+                                        imputed, rsq, zscore_e, ifDup   ); 
     uint pre_end   = 0;
     uint pre_start = 0;
     uint preDim    = 0;
     int nKept = 0;
     uint theMaxDim = (opt.maxDim + opt.minDim);
+    if(bp.size() < theMaxDim) theMaxDim = bp.size() + 1;
+       cout << "[info]  At least " << theMaxDim * theMaxDim /2 *8/1000000 << " Mb of memory is required." << endl;
+
+
+
 
     //LDType* LD = new LDType[  theMaxDim *  theMaxDim]();
     LDType2* LD = createStorage<LDType2>(long(theMaxDim));
-    for (uint k = 0; k < startList.size(); k ++ )
+    for (size_t k = 0; k < startList.size(); k ++ )
     {
         uint startIdx = startList[k], endIdx   =   endList[k];
         uint fillStartIdx = fillStartList[k], fillEndIdx   = fillEndList[k];
@@ -604,7 +603,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
             preDim = 0;
             continue;
         }
-        cout << endIdx << ", "<< startIdx<< endl;
+        cout <<   startIdx << "th" << " - "<< endIdx << "th" << endl;
         printf("..%.1f%%", k*100.0 / startList.size());
         if(!opt.loadLD )
             nKept = moveKeepProtect<LDType2>( LD, preDim, endIdx - startIdx,
@@ -633,8 +632,6 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
                      startIdx, fillStartIdx, fillEndIdx, LD,  opt);
             if(opt.doQC)
             {
-                //for (uint i =0; i < arrSize; i ++)
-                //    LD[i*arrSize + i] =  1;
                 runDENTIST<LDType2>( nSamples,
                      impOp.zScores + startIdx,
                      cutoff, thread_num,
@@ -661,7 +658,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
         if(opt.gcControl)
         {
             vector<double> Td;
-            for (uint i =0; i < zScores.size(); i ++ )
+            for (size_t i =0; i < zScores.size(); i ++ )
             {
                 double Td_i = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
                 Td.push_back(Td_i);
@@ -670,7 +667,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
             lambda =  Td [Td.size()/2]/ 0.46;
         }
 
-        for (uint i =0; i < zScores.size(); i ++ )
+        for (size_t i =0; i < zScores.size(); i ++ )
         {
             double stat = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
             qout << impOp.rsIDs[i] << "\t" << impOp.zScores[i] << "\t" 
@@ -688,7 +685,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
         if(opt.gcControl)
         {
             vector<double> Td;
-            for (uint i =0; i < zScores.size(); i ++ )
+            for (size_t i =0; i < zScores.size(); i ++ )
             {
                 double Td_i = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
                 Td.push_back(Td_i);
@@ -699,7 +696,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
 
 
                  
-        for (uint i =0; i < zScores.size(); i ++ )
+        for (size_t i =0; i < zScores.size(); i ++ )
         {
             double stat = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
             qout << impOp.rsIDs[i] << "\t" << stat /lambda << "\t" 
@@ -713,7 +710,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
     outLierout.close();
    
 }
-void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int nMarkers, vector<string>& rsIDs,vector<uint>& bp, vector<double>& zScores, vector<long int>& seqNos, vector<bool>& flipped, const Options& opt)
+void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int nMarkers, vector<string>& rsIDs,vector<uint>& bp, vector<double>& zScores, vector<int64>& seqNos, vector<bool>& flipped, const Options& opt)
 {
 
     
@@ -752,7 +749,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
 
     allGaps.push_back(diff.size());
     assert(zScores.size()  - minDim > 0);
-    for (uint k = 0; k < allGaps.size() -1; k ++)
+    for (size_t k = 0; k < allGaps.size() -1; k ++)
     {
         cout << "k = " << k << endl;
         int rangeSize = allGaps[k+1];
@@ -766,7 +763,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
         do
         {
             vector<double>  zScores_tmp;
-            vector<long>     seqNos_tmp;
+            vector<int64>    seqNos_tmp;
             vector<string>    rsIDs_tmp;
             vector<string>       A1_tmp;
             vector<int>       toAvert;
@@ -781,7 +778,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
             if(rangeSize == endIdx )
                 notLastInterval = 0;
             //int cutoff = endIdx - startIdx +1;
-            for (uint i = startIdx; i < endIdx; i ++)
+            for (auto i = startIdx; i < endIdx; i ++)
             {
                 zScores_tmp.push_back(zScores[i]);
                 seqNos_tmp.push_back(seqNos[i]);
@@ -810,7 +807,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
     delete[] LD;
     ofstream qout (qcFile);
 
-    for (uint i =0; i < zScores.size(); i ++ )
+    for (size_t i =0; i < zScores.size(); i ++ )
         qout << rsIDs[i] << "\t" << zScores[i] << "\t" << imputed[i] << "\t" << rsq[i] << "\t" << ifDup[i] << endl;
     qout.close();
    
@@ -819,7 +816,7 @@ void segmentedQCed (string bfileName, string qcFile, long int nSamples, long int
 
 
 
-void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>& perSNPsampleSize, vector<long int>& seqNo, vector<bool>& toFlip, vector<string>& rsID,vector<uint>& bp, string outFilePrefix )
+void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>& perSNPsampleSize, vector<int64>& seqNo, vector<bool>& toFlip, vector<string>& rsID,vector<uint>& bp, string outFilePrefix )
 {
     printf("[info] Aligning GWAS to the reference sample assumming both files are ordered.\n");
     vector<long int> alignToWhich (gtab.size(), -1);
@@ -879,10 +876,8 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
     exclOut.close();
     printf("[info] Performing DENTIST at %d SNPs shared between the summary and reference data. \n", sum);
     btab.include = include_tmp;
-
-
-
 }
+
 
 
 
@@ -900,24 +895,29 @@ void runSummaryImpute(const Options& opt)
     gwasDat = GWAS  (summmaryFile, true);
     // read bedfile
     BedFile  ref (bfileName, opt.mafThresh, opt.thread_num);
+
+    setChr(ref, opt.chrID);
     
     if(opt.targetSNP != "")
     {
         D(cout << "Extracting SNPs at the target SNP : " << opt.targetSNP << endl;);
         uint foundAt = ~0;
         // find the SNP
-        for (uint kk =0; kk < ref.bp.size(); kk ++)
+        for (size_t ii =0; ii < ref.include.size(); ii ++)
+        {
+            auto kk = ref.include[ii];
             if(ref.rs[kk] == opt.targetSNP)
             {
                 foundAt = kk; 
                 break;
             }
+        }
 
         if(foundAt != ~0)
         {
             printf("[info] Target %s is found at %d.\n", opt.targetSNP.c_str(),   foundAt);
             vector<uint> updatedInclude;
-            for (uint kk =0; kk < ref.include.size(); kk ++)
+            for (size_t kk =0; kk < ref.include.size(); kk ++)
             {
                 uint  i = ref.include[kk];
                 if(fabs( ref.bp[i] -  ref.bp[foundAt] ) <= 10e6)
@@ -951,7 +951,7 @@ void runSummaryImpute(const Options& opt)
         }
 
         vector<uint> updatedInclude;
-        for (uint kk =0; kk < ref.include.size(); kk ++)
+        for (size_t kk =0; kk < ref.include.size(); kk ++)
         {
             uint  i = ref.include[kk];
             if(snpList.find(ref.rs[i] ) !=snpList.end())
@@ -972,10 +972,10 @@ void runSummaryImpute(const Options& opt)
     vector<bool>   toFlip (impTab.zscore.size(), false);
     vector<uint>   perSNPsampleSize = impTab.splSize;
     vector<string> rsID   = impTab.rs;
-    vector<long int> seqNo;
+    vector<int64> seqNo;
     vector<uint> bp;
 
-    for (uint i = 0; i < ref.include.size(); i ++)
+    for (size_t i = 0; i < ref.include.size(); i ++)
     {
         uint j = ref.include[i];
         seqNo.push_back(ref.seqNo[j]);
@@ -995,6 +995,72 @@ void runSummaryImpute(const Options& opt)
 
 
 }
+
+void getFreq(const Options& opt)
+{
+    string summmaryFile = opt.summmaryFile;
+    string bfileName = opt.bfileName;
+    string outPrefix = opt.outPrefix;
+    string qcFile = outPrefix;
+    // read summary
+    // gzopen() can be used to read a file which is not in gzip format;
+    //   in this case gzread() will directly read from the file without decompression
+    // Therefore, there is no need to judge if summmaryFile is plain file or gz file.
+    GWAS gwasDat;
+    gwasDat = GWAS  (summmaryFile, true);
+    BedFile  ref;
+    if(opt.loadLD)
+    {
+        ref  = BLDFILE(opt.bldLDFile); // read BLD file
+        bfileName = opt.bldLDFile;
+    }
+    else
+        ref  = BedFile(bfileName, opt.mafThresh, opt.thread_num); // read bedfile
+
+    setChr(ref, opt.chrID);
+
+
+
+    // apply extraction
+    if(opt.extractFile != "")
+    {
+        D(cout << "[info] Reading SNPs to be extracted (kept) from : " << opt.extractFile << endl;);
+        ifstream eFin (opt.extractFile.c_str());
+        if (!eFin.is_open())
+        {
+            cout << "Fail to read from " << opt.extractFile << endl;
+            exit (EXIT_FAILURE);
+        }
+        string tmpStr ;
+        map<string, bool> snpList;
+        while(getline(eFin, tmpStr))
+        {
+            snpList [tmpStr] = true;
+        }
+        vector<uint> updatedInclude;
+        for (size_t kk =0; kk < ref.include.size(); kk ++)
+        {
+            uint  i = ref.include[kk];
+            if(snpList.find(ref.rs[i] ) !=snpList.end())
+            {
+                updatedInclude.push_back(i);
+            }
+        }
+        ref.include = updatedInclude;
+        eFin.close();
+        printf("[info] %d SNPs remained after --extract", updatedInclude.size());
+    }
+
+
+
+    ofstream mafOut ( opt.outPrefix + ".frq");
+    for (size_t i = 0; i <ref.include.size(); i ++)
+        mafOut << ref.maf[ref.include[i]] << endl;
+    mafOut.close();
+
+}
+
+
 //
 // Require: 1. summary file, 2. plink bed file / BLD file
 void runQC(const Options& opt)
@@ -1018,6 +1084,9 @@ void runQC(const Options& opt)
     else
         ref  = BedFile(bfileName, opt.mafThresh, opt.thread_num); // read bedfile
 
+    setChr(ref,opt.chrID);
+
+
     if(opt.targetSNP != "" && opt.targetBP != -1)
     {
         stop("[error] both --target and --target-bp were set, when only one is needed. \n");
@@ -1026,7 +1095,7 @@ void runQC(const Options& opt)
     {
         D(cout << "Extracting SNPs at the target SNP : " << opt.targetBP << endl;);
         vector<uint> updatedInclude;
-        for (uint kk =0; kk < ref.include.size(); kk ++)
+        for (size_t kk =0; kk < ref.include.size(); kk ++)
         {
             uint  i = ref.include[kk];
             if(fabs( ref.bp[i] -  opt.targetBP ) <= opt.radius)
@@ -1038,14 +1107,14 @@ void runQC(const Options& opt)
             stop("[error] less than 10 SNPs has left at the target region.\n");
 
     }
-        
+
     
     if(opt.targetSNP != "")
     {
         D(cout << "Extracting SNPs at the target SNP : " << opt.targetSNP << endl;);
         uint foundAt = ~0;
         // find the SNP
-        for (uint kk =0; kk < ref.bp.size(); kk ++)
+        for (size_t kk =0; kk < ref.bp.size(); kk ++)
             if(ref.rs[kk] == opt.targetSNP)
             {
                 foundAt = kk; 
@@ -1056,7 +1125,7 @@ void runQC(const Options& opt)
         {
             printf("[info] Target %s is found at %d.\n", opt.targetSNP.c_str(),   foundAt);
             vector<uint> updatedInclude;
-            for (uint kk =0; kk < ref.include.size(); kk ++)
+            for (size_t kk =0; kk < ref.include.size(); kk ++)
             {
                 uint  i = ref.include[kk];
                 if(fabs( ref.bp[i] -  ref.bp[foundAt] ) <= opt.radius)
@@ -1095,7 +1164,7 @@ void runQC(const Options& opt)
         }
 
         vector<uint> updatedInclude;
-        for (uint kk =0; kk < ref.include.size(); kk ++)
+        for (size_t kk =0; kk < ref.include.size(); kk ++)
         {
             uint  i = ref.include[kk];
             if(snpList.find(ref.rs[i] ) !=snpList.end())
@@ -1111,7 +1180,7 @@ void runQC(const Options& opt)
     // Align bfile and summary data.
     vector<double> zScore;
     vector<uint> perSNPsampleSize;
-    vector<long int> seqNo;
+    vector<int64> seqNo;
     vector<bool> toFlip;
     vector<string> rsID;
     vector<uint> bp;

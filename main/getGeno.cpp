@@ -2,7 +2,7 @@
 
 
 
-int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, long sizeOfMarkIdx,  int* result)
+int getGeno (std::string bedFile, uint nSample, long nMarker, int64* theMarkIdx, long sizeOfMarkIdx,  int* result)
 {
 
     const int individualsPerByte = 4;
@@ -44,7 +44,7 @@ int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, 
     unsigned long loadSize = perMakerSize * sizeof(char) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
     uchar* bufferAllMarkers = new unsigned char [loadSize ];
     printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
-    fseek (bedFileReader , perMakerSize * sizeof(char) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
+    fseeko64 (bedFileReader , perMakerSize * sizeof(char) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     ret = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
 
 
@@ -79,7 +79,7 @@ int getGeno (std::string bedFile, uint nSample, long nMarker, uint* theMarkIdx, 
 extern "C"
 {
 
-    int getGenoInvoker(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, int* result)
+    int getGenoInvoker(char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, int* result)
     {
         std::string bedFile( *bedFileCstr) ;
 

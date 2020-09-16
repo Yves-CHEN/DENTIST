@@ -36,7 +36,7 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
 //int writeLD2File_wind(FILE* outfile, ofstream& idxfile, T* LD, int dim, const BedFile& bp, int ldWind, uint startIdx, bool fully);
 
 template<class T>
-int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx,
+int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx,
         uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,T* result, int* jump, int* withNA);
 
 //typedef short LDType ;
@@ -71,7 +71,7 @@ void trimingBed(BedFile& ref, const Options& opt)
         }
 
         vector<uint> updatedInclude;
-        for (uint kk =0; kk < ref.include.size(); kk ++)
+        for (size_t kk =0; kk < ref.include.size(); kk ++)
         {
             uint  i = ref.include[kk];
             if(snpList.find(ref.rs[i] ) !=snpList.end())
@@ -110,7 +110,7 @@ int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, 
     vector<int> right(dim, 0);
     auto bp = ref.bp;
     bp.resize(ref.include.size());
-    for (uint i =0; i < ref.include.size(); i ++)
+    for (size_t i =0; i < ref.include.size(); i ++)
         bp [i]    = ref.bp   [ ref.include[i] ];
     findRight(bp.data()+startIdx, dim, right, ldWind);
     uint atIdx = 0 ;
@@ -161,14 +161,15 @@ template<> void saveLD <int> (Options& opt)
     ofstream  idxfile2 (rightIdxFile.c_str());
     const     uint maxDim = 200000;
     // read bedfile
-    BedFile  ref (bedfileName, opt.mafThresh, opt.thread_num); // apply MAF thresh
+    BedFile  ref (bedfileName, opt.mafThresh,  opt.thread_num); // apply MAF thresh
+    setChr(ref, opt.chrID);
     // --maf --extract
     trimingBed(ref, opt);
     auto  bp    = ref.bp;
     auto  seqNo = ref.seqNo;
     bp.resize(ref.include.size());
     seqNo.resize(ref.include.size());
-    for (uint i =0; i < ref.include.size(); i ++)
+    for (size_t i =0; i < ref.include.size(); i ++)
     {
         bp [i]    = ref.bp   [ ref.include[i] ];
         seqNo [i] = ref.seqNo[ ref.include[i] ];
@@ -216,10 +217,10 @@ template<> void saveLD <int> (Options& opt)
         assert(rangeSize < maxDim);
         printf("..%.1f%%", startIdx *1.0 / bp.size () * 100);
         //  get LD at the range from startIdx to endIdx
-        uint*   theMarkIdx = new uint[rangeSize]  ;
+        int64*   theMarkIdx = new int64[rangeSize]  ;
         uint*   toAvert    = new uint[rangeSize] () ;
 #pragma omp parallel for
-        for (uint i = startIdx; i < endIdx; i ++) 
+        for (auto i = startIdx; i < endIdx; i ++) 
              theMarkIdx[i-startIdx] = seqNo[i];
 
         _LDFromBfile <int>(&head, &M, &N, theMarkIdx, &rangeSize,
@@ -391,8 +392,6 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
     if(SaveInNumByte == 2)
     {
         short* LD = new short[dim * dim](); /// new and set zeros
-        //for (uint i = 0; i < dim; i ++)
-        //    LD[i*dim + i] =10000;
         int SaveUpTo = dim -1;
         for(int i = fromIdx, k = 0; i < toIdx -1;i ++, k ++)
         {
@@ -401,11 +400,11 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
             fread(&LD [ k * dim + k +1], SaveInNumByte, SaveUpTo ,datFile);  
             SaveUpTo  --;
         }
-        for (uint i = 0; i < dim-1; i ++)
-            for (uint j = i+1; j < dim; j ++)
+        for (size_t i = 0; i < dim-1; i ++)
+            for (size_t j = i+1; j < dim; j ++)
                 LD[j*dim + i] = LD[i*dim + j]  ;
-        for (uint i = 0; i < dim; i ++)
-            for (uint j = 0; j < dim; j ++)
+        for (size_t i = 0; i < dim; i ++)
+            for (size_t j = 0; j < dim; j ++)
                 LD_typeT[i*dim + j] = double(LD[i*dim + j] * 1.0 / 10000)  ;
         delete[] LD;
     }
@@ -413,29 +412,29 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
     {
         int* LD = new int[dim * dim](); /// new and set zeros
         uint scaler  = 1e8;
-        for (uint i = 0; i < dim; i ++)
+        for (size_t i = 0; i < dim; i ++)
             LD[i*dim + i] = scaler;
         int SaveUpTo = dim -1;
-        for(int i = fromIdx, k = 0; i < toIdx -1;i ++, k ++)
+        for(auto i = fromIdx, k = 0; i < toIdx -1;i ++, k ++)
         {
             // fwind
             fseek ( datFile,  loc[i] , SEEK_SET );
             fread(&LD [ k * dim + k +1], SaveInNumByte, SaveUpTo ,datFile);  
             SaveUpTo  --;
         }
-        for (uint i = 0; i < dim-1; i ++)
-            for (uint j = i+1; j < dim; j ++)
+        for (size_t i = 0; i < dim-1; i ++)
+            for (size_t j = i+1; j < dim; j ++)
                 LD[j*dim + i] = LD[i*dim + j]  ;
 
-        for (uint i = 0; i < dim; i ++)
-            for (uint j = 0; j < dim; j ++)
+        for (size_t i = 0; i < dim; i ++)
+            for (size_t j = 0; j < dim; j ++)
                 LD_typeT[i*dim + j] = double(LD[i*dim + j] * 1.0 / scaler)  ;
         delete[] LD;
     }
     if(ifPrint)
-        for (uint i = 0; i < dim; i ++)
+        for (size_t i = 0; i < dim; i ++)
         {
-            for (uint j = 0; j < dim; j ++)
+            for (size_t j = 0; j < dim; j ++)
                 cout << LD_typeT[j*dim + i] << "\t"  ;
             cout << endl;
         }
@@ -536,8 +535,8 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
 
         cout << "tt2" << endl;
             short* LD = (short*) LD_untyped;
-            for (uint i = 0; i < dim-1; i ++)
-                for (uint j = i+1; j < dim; j ++)
+            for (size_t i = 0; i < dim-1; i ++)
+                for (size_t j = i+1; j < dim; j ++)
                     LD_typeT[j*dim + i] = float(LD[i*dim + j] * 1.0 / 10000)  ;
 
         } else if (is_floating_point<T>::value || std::is_same<T, double>::value ) 
@@ -545,22 +544,22 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
 
             if (SaveInNumByte == sizeof(float)) {
                 float* LD = (float*)LD_untyped;
-                for (uint i = 0; i < dim-1; i ++)
-                    for (uint j = i+1; j < dim; j ++)
+                for (size_t i = 0; i < dim-1; i ++)
+                    for (size_t j = i+1; j < dim; j ++)
                         LD_typeT[j*dim + i] = LD[i*dim + j] ;
             }
             if (SaveInNumByte == sizeof(double)) {
                 double* LD = (double*)LD_untyped;
-                for (uint i = 0; i < dim-1; i ++)
-                    for (uint j = i+1; j < dim; j ++)
+                for (size_t i = 0; i < dim-1; i ++)
+                    for (size_t j = i+1; j < dim; j ++)
                         LD_typeT[j*dim + i] = LD[i*dim + j] ;
             }
         } else if (is_same<T,short>::value) /// saved in float/double, but expecting short
         {
 
             T* LD = (T*)LD_untyped;
-            for (uint i = 0; i < dim-1; i ++)
-                for (uint j = i+1; j < dim; j ++)
+            for (size_t i = 0; i < dim-1; i ++)
+                for (size_t j = i+1; j < dim; j ++)
                     LD_typeT[j*dim + i] = short(LD[i*dim + j] * 10000) ;
 
         } else
@@ -570,13 +569,8 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
         }
         delete[]  LD_untyped;
     }
-    cout << "recreawted" << endl;
-    // for (uint i = 0; i < dim-1; i ++)
-    //    for (uint j = i+1; j < dim; j ++)
-    //        LD_typeT[j*dim + i] = LD_typeT[i*dim + j]  ;
-    cout << LD_typeT << endl;
 
-    for (uint i = 0; i < dim-1; i ++)
+    for (size_t i = 0; i < dim-1; i ++)
         cout << LD_typeT[i*dim + dim -1] << endl;
     return LD_typeT;
 }

@@ -25,6 +25,9 @@ cout << "* MIT License" << endl;
 cout << "*******************************************************************" << endl;
 
 
+    // system/platform check
+    assert (sizeof(off_t) == 8);
+    assert (sizeof(int64) == 8);
 
 
 
@@ -32,6 +35,8 @@ cout << "*******************************************************************" <<
     string bfileName     = "/home/uqwche11/30days/simulation.UK10K/Data/hrs.hm2/hrs_hm2_chr22";
     Options opt;
     opt.parseOptions (argc, argv);
+ //   if(opt.chrID == "")
+ //       stop("[error] Please specify chrID by --chrID, since DENTIST only run for each chromosome.\n");
 
 
     if(opt.bldLDFile != "" && opt.doCheck)
@@ -47,6 +52,12 @@ cout << "*******************************************************************" <<
 //                            opt.maxDist, opt.thread_num);
         saveLD<int>(opt);
     }
+
+    if( opt.doFreq)
+    {
+        getFreq(opt);
+    }
+
     if(opt.doImpute && opt.summmaryFile != "" && opt.bfileName != "")
         runSummaryImpute(opt);
 

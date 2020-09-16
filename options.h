@@ -8,6 +8,7 @@ public:
     string summmaryFile;
     string bfileName   ;
     string outPrefix   ;
+    string chrID;
     int    maxDim      ;
     int    minDim      ;
     int    maxDist;
@@ -32,6 +33,7 @@ public:
     bool     doWrite;
     bool    doCheck;
     bool    doQC;
+    bool    doFreq;
     bool    doImpute;
     //const char *flgs[] ;
     vector<string> flags;
@@ -122,6 +124,9 @@ public:
 
         outPrefix     = "out";  // default output prefix
         flags.push_back("--out");
+        chrID         = "";  // default output prefix
+        flags.push_back("--chrID");
+
         thread_num    = 1;      // number of threads for QC
         flags.push_back("--thread-num");
         dupThresh     = 0.99;    // percentage of probes to be filtered
@@ -172,9 +177,11 @@ public:
         doWrite       = false;
         doCheck       = false;
         doQC          = true;
+        doFreq        = false;
         doImpute      = false;
         flags.push_back("--check-LD");
         flags.push_back("--write-LD");
+        flags.push_back("--freq");
         flags.push_back("--impute");
 
         ignoreWarnings = false;
@@ -275,6 +282,16 @@ void Options::parseOptions(int nArgs, char* option_str[])
                 stop( "Error: the dimention of matrix < 1 \n");
             FileExist(bldLDFile + ".bld");
         }
+        if(strcmp(option_str[i],"--freq")==0)
+        {
+            this->doFreq  = true;
+            this->doQC    = false;
+            this->doCheck = false;
+            if(i+1 < nArgs)
+                Options::bool_FLAG_VALID_CK(string("--freq"), option_str[i+1]);
+            cout<< option_str[i] << " " <<  " TRUE" <<endl;
+        }
+
         if(strcmp(option_str[i],"--write-LD")==0)
         {
             this->doWrite  = true;
@@ -318,8 +335,14 @@ void Options::parseOptions(int nArgs, char* option_str[])
             outPrefix = option_str[++i];
             Options::FLAG_VALID_CK(string("--out"), outPrefix.c_str());
             cout<< option_str[i-1] << " "<< outPrefix <<endl;
-            // CommFunc::FileExist(oproblstName);
         }
+        if(strcmp(option_str[i], "--chrID") == 0)
+        {
+            chrID  = option_str[++i];
+            Options::FLAG_VALID_CK(string("--chrID"), chrID.c_str());
+            cout<< option_str[i-1] << " "<<  chrID <<endl;
+        }
+
         if(strcmp(option_str[i], "--thread-num") == 0){
             thread_num = atoi(option_str[++i]);
             cout << option_str[i-1] << " " << thread_num<< endl;

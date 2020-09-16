@@ -35,8 +35,8 @@ LIB +=  -lz -Wl,-lm -ldl
 # PKG_LIBS =  -Llib -lLDinspect -DUSEDOUBLE -g3 -m64  -Wl,--start-group /opt/intel/composer_xe_2017.4/mkl/lib/intel64/libmkl_intel_lp64.a /opt/intel/composer_xe_2017.4/mkl/lib/intel64/libmkl_gnu_thread.a /opt/intel/composer_xe_2017.4/mkl/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl -L /home/uqwche11/utils/R-3.2.2/lib64/R/lib/ -lR -lRblas -lRlapack
 
 
-PKG_CPPFLAGS =  -m64 -DEIGEN_NO_DEBUG -DNDEBUG   -fpic  -g -O2     -I${BOOST_PATH}   -I${MKLROOT}/include  -DMKL_ILP64  -I${EIGEN3_INCLUDE_DIR}  -I. -DUSEDOUBLE -g3 -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL 
-PKG_LIBS = -static -L$(main) -l$(main) -DUSEDOUBLE -g3 -m64 -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group  -lgomp -lpthread -lz -lm -ldl  -DNDEBUG -DEIGEN_USE_MKL_ALL 
+PKG_CPPFLAGS =  -m64 -DEIGEN_NO_DEBUG -DNDEBUG   -fpic  -g -O2     -I${BOOST_PATH}   -I${MKLROOT}/include  -DMKL_ILP64  -I${EIGEN3_INCLUDE_DIR}  -I. -DUSEDOUBLE -g3 -fopenmp  -std=gnu++11  -Wno-deprecated -DEIGEN_USE_MKL_ALL
+PKG_LIBS = -static -L$(main) -l$(main) -DUSEDOUBLE -g3 -m64 -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group  -lgomp -lpthread -lz -lm -ldl  -DNDEBUG -DEIGEN_USE_MKL_ALL
 
 
 

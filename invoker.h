@@ -6,7 +6,7 @@
 
 //#include <template>
 using namespace std;
-template<class T>  int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx,
+template<class T>  int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx,
         uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,T* result, int* jump, int* withNA);
 /// 
 /// 
@@ -21,18 +21,6 @@ template<class T> void impute(T* LDmat, uint* markerSize, uint* nSample,
 
 
 
-
-// void generateData (uint theMarkIdx[], uint toAvert[], double zScores[], uint M)
-// {
-// 
-//     for (int i =0; i < M; i++)
-//         theMarkIdx[i] = i +1;
-//     for (int i =0; i < M; i++)
-//         toAvert[i] = 0;
-//     for (int i =0; i < M; i++)
-//         zScores[i] = i +2;
-// 
-// }
 
 void findDup2(double* r,  double rThreshold, vector<int>& dupBearer, vector<int>& sign)
 {
@@ -85,13 +73,13 @@ void runDENTIST( uint nSamples,
     T* resultNoDup = createStorage<T>(long(arrSize_tmp));
 
     int count =0;
-    for (uint i = 0; i < dupBearer.size(); i ++)
+    for (size_t i = 0; i < dupBearer.size(); i ++)
     {
         if(dupBearer[i] == -1)
         {
            zScores_tmp[count] = zScores[i];
            int count2 = 0;
-           for (uint j =0; j < dupBearer.size(); j ++)
+           for (size_t j =0; j < dupBearer.size(); j ++)
                 if(dupBearer[j] == -1)
                 {
                     saveData(readMatrix(result, arrSize, i,j ), count, count2, resultNoDup, arrSize_tmp);
@@ -107,14 +95,14 @@ void runDENTIST( uint nSamples,
     deleteStorage(resultNoDup);
     count =0;
     vector<uint> assignIdx (dupBearer.size() , 0);
-    for (uint i =0; i <dupBearer.size(); i ++)
+    for (size_t i =0; i <dupBearer.size(); i ++)
     {
         if(dupBearer[i ] == -1)
             assignIdx[i] = count ++;
         else
             assignIdx[i] = dupBearer[i];
     }
-    for (uint i =startIdx; i < endIdx; i ++)
+    for (size_t i =startIdx; i < endIdx; i ++)
     {
         if(i - thePos > dupBearer.size()) stop("[error] function runDENTIST"); 
         imputedZ[i]  = imputedZ_tmp[assignIdx[i - thePos]] * sign[i-thePos];
@@ -155,12 +143,12 @@ void runImpute(uint nSamples, double* zScores,
     uint      arrSize_tmp = arrSize - sum;
     //LDType*   resultNoDup = new LDType[ arrSize * arrSize]() ;
     T* resultNoDup = createStorage<T>(long(arrSize_tmp));
-    for (uint i = 0, new_i =0; i < dupBearer.size(); i ++)
+    for (size_t i = 0, new_i =0; i < dupBearer.size(); i ++)
     {
         if(dupBearer[i] == -1)
         {
             zScores_tmp[new_i] = zScores[i];
-            for (uint j =0, new_j= 0; j < dupBearer.size(); j ++)
+            for (size_t j =0, new_j= 0; j < dupBearer.size(); j ++)
                 if(dupBearer[j] == -1)
                 {
                     //resultNoDup[new_i* arrSize_tmp + new_j] = result[i*arrSize + j];
@@ -176,14 +164,14 @@ void runImpute(uint nSamples, double* zScores,
     deleteStorage(resultNoDup);
     int count =0;
     vector<uint> assignIdx (dupBearer.size() , 0);
-    for (uint i =0; i <dupBearer.size(); i ++)
+    for (size_t i =0; i <dupBearer.size(); i ++)
     {
         if(dupBearer[i ] == -1)
             assignIdx[i] = count ++;
         else
             assignIdx[i] = dupBearer[i];
     }
-    for (uint i =startIdx; i < endIdx; i ++)
+    for (auto i =startIdx; i < endIdx; i ++)
     {
         if(i - thePos > dupBearer.size()) stop("[error] function runImpute"); 
         imputedZ[i]  = imputedZ_tmp[assignIdx[i - thePos]] * sign[i-thePos];
@@ -199,7 +187,7 @@ void runImpute(uint nSamples, double* zScores,
 
 
 
-void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, vector<int>& toAvert_Null, vector<double>& the_zScores, uint nMarkers, uint nSamples, 
+void testMethods(string bedFile,vector<string>& rsIDs,  vector<int64>& seqNos, vector<int>& toAvert_Null, vector<double>& the_zScores, uint nMarkers, uint nSamples, 
         int cutoff,  string outFileName, int ncpus, vector<int>& toKeep,  
         vector<double>& imputedZ, vector<double>& rsq, vector<double>& zScore_e, vector<bool>& ifDup, int thePos, int startIdx, int endIdx, LDType* result, uint nKept, const Options& opt, bool preCalculated)
 {
@@ -209,11 +197,11 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     std::strcpy ( bedFileCstr, bedFile.c_str());
     char*   head       = bedFileCstr;
     uint    arrSize    = seqNos.size();
-    uint*   theMarkIdx = new unsigned int[arrSize]  ;
+    int64*   theMarkIdx = new int64[arrSize]  ;
     uint*   toAvert    = new unsigned int[arrSize] ;
     double* zScores    = new double[arrSize] ;
 
-    for (uint i =0; i < arrSize; i ++)
+    for (size_t i =0; i < arrSize; i ++)
     {
          theMarkIdx[i] = seqNos[i];
          toAvert[i]    = toAvert_Null[i];
@@ -223,76 +211,12 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
 
     int jump = nKept ;
     int withNA = opt.withNA;
-    //int jump = 0;
-    //_LDFromBfile (&head, &nMarkers, &nSamples, theMarkIdx, &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
-    
-    /// ofstream log("t1.txt");
-    /// for (uint i =0; i < arrSize; i ++)
-    /// {
-    ///     for (uint j =0; j < arrSize; j ++)
-    ///         log << result[ i *arrSize +j ] << "\t";
-    ///     log << endl;
-    /// }
-    /// log.close();
 
     if(!preCalculated)
        _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx,
                 &arrSize, toAvert, &cutoff,  &ncpus, result, &jump, &withNA);
 
-    //for (uint i =0; i < arrSize; i ++)
-    //    for (uint j =0; j < arrSize; j ++)
-    //        result[ i *arrSize +j ]  = int(result[ i *arrSize +j ]  * 1e5) * 1.0 /1e5;
-    //
-    //
-    /// LDType* tmpLD = new LDType[arrSize * arrSize]();
-    /// _LDFromBfile <LDType>(&head, &nMarkers, &nSamples, theMarkIdx,
-    ///             &arrSize, toAvert, &cutoff,  &ncpus, tmpLD, &jump, &withNA);
-    /// double largestDiff = 0;
-    /// uint  whichi = 0;
-    /// uint  whichj = 0;
-    /// bool found = false;
-    /// for (uint i =0; i < arrSize; i ++)
-    /// {
-    ///     if(found) break;
-    ///     for (uint j =0; j < arrSize; j ++)
-    ///     {
-    ///     double tmpDiff = fabs(result[i*arrSize + j] - tmpLD[i*arrSize + j]);
-    ///         if( tmpDiff > largestDiff)
-    ///         {
-    ///             largestDiff = tmpDiff;
-    ///             whichi = i;
-    ///             whichj = j;
-    ///             found = true;
-    ///             break;
-    ///         }
-    ///     }
-    /// }
-    /// cout << rsIDs[whichi] << endl;
-    /// cout << rsIDs[whichj] << endl;
-    /// cout << whichi  << endl;
-    /// cout << whichj  << endl;
-    /// cout <<seqNos[whichi] << endl;
-    /// cout <<seqNos[whichj] << endl;
-    /// cout << result[whichi * arrSize + whichj] << endl;
-    /// cout << tmpLD[whichi * arrSize + whichj] << endl;
-    /// cout << "largestDiff " << largestDiff << endl;
-    /// delete[] tmpLD;
-
    
-
-
-   
-
-    // omp_set_num_threads(ncpus);
-    // Eigen::setNbThreads(ncpus);
-    // regularizeLD(result, arrSize);
-   
-
-
-    //double rThreshold = 0.95;
-    // double rThreshold = 0.97;
-    //double rThreshold = 0.99;
-    //double rThreshold = 0.995;
     double rThreshold = round(sqrt(opt.dupThresh ) * 1000 )/1000.0;
     vector<int> dupBearer( arrSize, -1);
     vector<double> corABS( arrSize, -1);
@@ -316,13 +240,13 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     vector<string> tmp_rsIDs;
 
     int count =0;
-    for (uint i = 0; i < dupBearer.size(); i ++)
+    for (size_t i = 0; i < dupBearer.size(); i ++)
     {
         if(dupBearer[i] == -1)
         {
            zScores_tmp[count] = zScores[i];
            int count2 = 0;
-           for (uint j =0; j < dupBearer.size(); j ++)
+           for (size_t j =0; j < dupBearer.size(); j ++)
                 if(dupBearer[j] == -1)
                 {
                     resultNoDup[count * arrSize_tmp + count2] = result[i*arrSize + j];
@@ -341,7 +265,7 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
     vector<double> imputedZ_tmp_unfold(dupBearer.size(),-1);
     vector<double> rsq_tmp_unfold(dupBearer.size(), -1);
     vector<bool> ifDup_unfold(dupBearer.size(), false);
-    for (uint i =0; i <dupBearer.size(); i ++)
+    for (size_t i =0; i <dupBearer.size(); i ++)
     {
         if(dupBearer[i ] == -1)
         {
@@ -364,7 +288,7 @@ void testMethods(string bedFile,vector<string>& rsIDs,  vector<long>& seqNos, ve
         }
     }
     delete[] resultNoDup;
-    for (uint i =startIdx; i < endIdx; i ++)
+    for (auto i =startIdx; i < endIdx; i ++)
     {
 
         if(i - thePos > imputedZ_tmp_unfold.size()) {cout << "[error] i - thePos > imputedZ_tmp_unfold" << endl; exit(-1);}

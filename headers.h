@@ -27,6 +27,7 @@ using namespace std;
 typedef unsigned int  uint;
 typedef unsigned char uchar;
 typedef double        LDType;
+typedef long long     int64;
 typedef boost::numeric::ublas::symmetric_matrix<double, boost::numeric::ublas::upper> LDType2;
 
 

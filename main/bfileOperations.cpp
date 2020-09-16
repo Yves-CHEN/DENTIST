@@ -12,16 +12,10 @@
 //     nonmissing (SNPi), or   nonmissing (SNPj).
 // ******************************************************************************
 template <class T>
-int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, uint64* theMarkIdx,
-        int64 sizeOfMarkIdx, uint64* toAvert, int cutoff, int ncpus, T* result, int64 jump)
+int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int64* theMarkIdx,
+        int64 sizeOfMarkIdx, int64* toAvert, int cutoff, int ncpus, T* result, int64 jump)
 {
-    std::cout << nSample << "\t"
-              << nMarker << "\t"
-              << theMarkIdx [0] << "\t"
-              << theMarkIdx [sizeOfMarkIdx -1]<< "\t"
-              << toAvert [sizeOfMarkIdx - 1]<< "\t"
-              << ncpus << "\t"
-              << jump  << "\t" << std::endl;
+
     // **************************************************************
     ///                    set timer
     // **************************************************************
@@ -109,21 +103,16 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, uint
         markMissing[i]   =  ((aa ^ aa <<1) & screener & ~aa ) ;
         markMissing[i]  = ~( markMissing[i] | (markMissing[i] >> 1) );
     }
-
-
     // ******************************************************
     ///     1. Calculating the var(SNP_i), E(SNP_i), E(SNP_i^2)
     //      2. Avert the genotype if specified.
     // ******************************************************
     unsigned long long loadSize = perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
     uchar* bufferAllMarkers = new uchar [loadSize ];
-
     printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
-    
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     readSize = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
     dataType* bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
-    
     clock_gettime(CLOCK_MONOTONIC, &start);
     
     
@@ -542,7 +531,7 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
 // ***********************************************************
 
 template <class T>
-int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64 nMarker, uint64* theMarkIdx, uint64 sizeOfMarkIdx, uint64* toAvert, int cutoff, int ncpus, T* result, int jump)
+int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64 nMarker, int64* theMarkIdx, uint64 sizeOfMarkIdx, int64* toAvert, int cutoff, int ncpus, T* result, int jump)
 {
     // **************************************************************
     ///                    set timer
@@ -559,11 +548,11 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     // **************************************************************
     //                     Variables
     // **************************************************************
-    uint64 processSamplePerRound = sizeof(dataType)*8 /2;
     const int individualsPerByte = 4;
-    uint64 perMakerSizeOrig = ceil ( (nSample) / 1.0 / individualsPerByte );
-    uint64 perMakerSize = uint( (nSample) / 1.0 / processSamplePerRound );
-    uint64 nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
+    int64    processSamplePerRound = sizeof(dataType)*8 /2;
+    int64    perMakerSizeOrig = ceil ( (nSample) / 1.0 / individualsPerByte );
+    int64    perMakerSize = uint( (nSample) / 1.0 / processSamplePerRound );
+    int64    nBlanks   = ( processSamplePerRound - (nSample) % processSamplePerRound  ) % processSamplePerRound; 
     int64 lSize =0;
     /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes in older version.
     int const nByteHeader = 9;
@@ -646,6 +635,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     D(printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6)););
     printf("[info] LD matrix size is %d Mb. \n", int(sizeOfMarkIdx * 1.0 * sizeOfMarkIdx/1e6 * 8)); 
     D(printf("[info] Map size is %d Mb. \n", int(sizeOfMap * 1.0 * sizeof(uint)* 4 + sizeOfMap * 1.0 * sizeof(dataType) * 1)););
+
     
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     readSize = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
@@ -670,7 +660,7 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
 #pragma omp parallel for
     for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
     {
-        GENO[i] = (dataType*) (perMakerSizeOrig * (long long)(theMarkIdx[i] - theMarkIdx[0]) + bufferAllMarkers);
+        GENO[i] = (dataType*) (perMakerSizeOrig * (theMarkIdx[i] - theMarkIdx[0]) + bufferAllMarkers);
     }
 
 
@@ -693,10 +683,6 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
       E_sq  [i] = double(sum_i   + sum11_i*2 )/ (nKeptSample);
       VAR   [i] =  E_sq[i] - E[i] * E[i] ;
    }
-
-
-    D(std::cout << "jump" << jump << std::endl;);
-
 
 #pragma omp parallel for
      for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
@@ -817,16 +803,16 @@ extern "C"
 
 
 template <class T>
-int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, T* result, int* jump, int* withNA)
+int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, T* result, int* jump, int* withNA)
 {
     std::string bedFile( *bedFileCstr) ;
     int nToAvert = 0;
 #pragma omp parallel for reduction(+:nToAvert)
     for (unsigned int i = 0; i < *arrSize; i ++)
         nToAvert += toAvert[i];
-    uint64*  theMarkIdx_tmp = new uint64 [*arrSize];
-    uint64*     toAvert_tmp = new uint64 [*arrSize];
-    for(uint64 i = 0; i < *arrSize ; i ++)
+    int64*  theMarkIdx_tmp = new int64 [*arrSize];
+    int64*     toAvert_tmp = new int64 [*arrSize];
+    for(uint i = 0; i < *arrSize ; i ++)
     {
         theMarkIdx_tmp[i] = theMarkIdx[i];
         toAvert_tmp[i]    = toAvert[i];
@@ -858,13 +844,12 @@ int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMa
 }
 
 
-template int _LDFromBfile <int> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, int* result, int* jump, int* withNA);
-template int _LDFromBfile <float> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, float* result, int* jump, int* withNA);
-template int _LDFromBfile <double> (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,double* result, int* jump, int* withNA);
-
-template int _LDFromBfile <smatrix_d > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_d* result, int* jump, int* withNA);
-template int _LDFromBfile <smatrix_f > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_f* result, int* jump, int* withNA);
-template int _LDFromBfile <smatrix_i > (char** bedFileCstr, uint* nMarkers, uint* nSamples, uint* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_i* result, int* jump, int* withNA);
+template int _LDFromBfile <int>        (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, int* result, int* jump, int* withNA);
+template int _LDFromBfile <float>      (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, float* result, int* jump, int* withNA);
+template int _LDFromBfile <double>     (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,double* result, int* jump, int* withNA);
+template int _LDFromBfile <smatrix_d > (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_d* result, int* jump, int* withNA);
+template int _LDFromBfile <smatrix_f > (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_f* result, int* jump, int* withNA);
+template int _LDFromBfile <smatrix_i > (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_i* result, int* jump, int* withNA);
 
 
 

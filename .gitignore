@@ -1,0 +1,12 @@
+# reviews these to see if you can just delete any.
+Makefile.static
+backup.sh
+backupCode/
+builts/
+compile.sh
+diff.txt
+err.log
+main/calInversion.tests.cpp.bak
+main/st3TPIHn
+release/
+tests/

@@ -8,6 +8,11 @@
 typedef  unsigned char  uchar ;
 
 
+
+
+
+
+
 class BedFile
 {
 public:
@@ -15,18 +20,18 @@ public:
     vector<string> A2;
     vector<string> chrID;
     vector<string> rs;
-    vector<long int> seqNo;
+    vector<int64>  seqNo;
     vector<int>    bp;
     vector<uint>   include;
     vector<double> maf;
     vector<double> geneticDist;
     bool           moganMissing;
     string         bfileStr = "";
-    long int M;
-    long int N;
+    long int       M;
+    long int       N;
     inline long int size(){return (rs.size());};
     vector<double> calcMaf (string bfileName, long int N, long int M, uint ncpus);
-    BedFile(string bfileName, float maf, uint ncpus);
+    BedFile(string bfileName, float maf,  uint ncpus);
     BedFile(string bfileName);
     inline BedFile() {};
     inline  string print(uint i) const 
@@ -56,12 +61,12 @@ BedFile::BedFile(string  bfileName )
     ifstream Bim(bimFile.c_str());
 
     if(!Bim.good()) printf( "[error] [%s] not found.\n", bimFile.c_str());
-    int ibuf = 0;
+    int    ibuf = 0;
     string cbuf = "0";
     double dbuf = 0.0;
     string str_buf;
-    long int rowNum = 0;
-    int ncpus = 1;
+    int64  rowNum = 0;
+    int    ncpus = 1;
 
     moganMissing = false;
     int p_bp = -1;
@@ -111,7 +116,7 @@ BedFile::BedFile(string  bfileName )
     fin.close();
     this->N = N;
     this->maf = calcMaf (bfileName, N, M, ncpus);
-    for (uint i = 0; i < this->bp.size(); i ++)
+    for (size_t i = 0; i < this->bp.size(); i ++)
         this->include.push_back(i);
 
 
@@ -119,7 +124,9 @@ BedFile::BedFile(string  bfileName )
 
 };
 
-BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
+
+
+BedFile::BedFile(string  bfileName, float minMaf,  uint ncpus)
 :bfileStr(bfileName)
 {
     string bimFile = bfileName + ".bim";
@@ -142,11 +149,7 @@ BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
         this->geneticDist.push_back(dbuf);
         Bim >> ibuf;
         this->bp.push_back(ibuf);
-        if(ibuf >= p_bp) // ordered bp is expected
-            p_bp = ibuf;
-        else
-            break;
-
+        p_bp = ibuf;
         Bim >> cbuf;
         to_upper(cbuf);
         this->A1.push_back(cbuf.c_str());
@@ -157,21 +160,14 @@ BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
         rowNum  ++;
     }
     Bim.close();
-    if(ibuf < p_bp)
-    {
-        cout << "[error] The bed file should ordered by bp and it should be per-chromosome file than genomewide." << endl;
-        exit(-1);
-    }
-
     uint dist = this->bp[ this->bp.size() -1] - this->bp[ 0];
     if(dist> 5e-6 && this->geneticDist[this->bp.size() -1] == 0 ) // warning mogan missing, if last - first > 10Mb, but the mogan is 0
     {
         cout << "[warning] mogan is like to be missing, but it will only be a problem when calling for it." << endl;
         moganMissing = true;
     }
-
-
-    M = this -> rs.size();
+    //this->M = this -> rs.size();
+    this->M = rowNum;
     string famFile = bfileName + ".fam";
     ifstream fin(famFile.c_str());
     int N = 0;
@@ -179,11 +175,9 @@ BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
     while (getline(fin, line)) N++;
     fin.close();
     this->N = N;
-    this->maf = calcMaf (bfileName, N, M, ncpus);
-
-
-    decltype(this->maf) tmpMaf = this->maf;
-    for (uint i = 0; i < this->maf.size(); i ++) 
+    this->maf = calcMaf (bfileName, N,  this -> rs.size(), ncpus);
+    decltype(this->maf) tmpMaf;
+    for (size_t i = 0; i < this->maf.size(); i ++) 
     {
         if( (this->maf[i] <= 0.5 && this->maf[i] > minMaf) ||  (this->maf[i] > 0.5 && 1- this->maf[i] > minMaf)  )
         {
@@ -191,18 +185,18 @@ BedFile::BedFile(string  bfileName, float minMaf, uint ncpus )
             tmpMaf.push_back(this->maf[i]);
         }
     }
-    
 
     if(std::find(tmpMaf.begin(), tmpMaf.end(), 0) != tmpMaf.end())
         stop("[error]  A SNP(s) with maf of 0 is found.\n");
-
 }
+
+
 
 
 vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uint ncpus)
 {
     long int nSample = N;
-    long int nMarker = M;
+    long int nMarker = this->M;
     long int sizeOfMarkIdx = M;
     string bedFile = bfileName + ".bed";
     string bimFile = bfileName + ".bim";
@@ -225,11 +219,11 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     typedef unsigned char dataType;
     uint processSamplePerRound = sizeof(dataType)*8 /2;
     //uint perMakerSize = ceil ( (nSample) / 1.0 / processSamplePerRound );
-    uint perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
-    uint perMakerSize = ceil( (nSample) / 1.0 / processSamplePerRound );
+    int64 perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
+    int64 perMakerSize = ceil( (nSample) / 1.0 / processSamplePerRound );
     uint nBlanks   = ( processSamplePerRound - (nSample) %
                 processSamplePerRound  ) % processSamplePerRound; //
-    long lSize =0;
+    int64 lSize =0;
     /// headerCoding is 9 bytes in total for plink 1.9 bedfile format, 3 bytes
     //in older version.
     int const nByteHeader = 9;
@@ -254,6 +248,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     fseek (bedFileReader, 0 , SEEK_END);
     lSize = ftell (bedFileReader);
     rewind (bedFileReader);
+
     /// This checks the version of bed file. Examine if there is damage to
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
@@ -265,10 +260,11 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) 
         {printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n");
          formatVersion="1.0"; nThrowAway = nByteHeader_older;};
-    if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
+
+    if(lSize  != int64(perMakerSizeOrig) * nMarker + nThrowAway )
     {
-        printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n",
-            lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
+        cout << "[error] The size of bedFile " << lSize << " is inconsistenty with the estimated " << perMakerSizeOrig * nMarker + nThrowAway 
+            << " basd on " << perMakerSizeOrig << " samples and " << nMarker << "markers. \n";
     }
 
 
@@ -328,28 +324,29 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     }
 
     vector<double>   maf (nMarker, -1);
-    for (uint block_i =0; block_i < readLen.size(); block_i ++)
+    for (size_t block_i =0; block_i < readLen.size(); block_i ++)
     {
 
-        unsigned long loadSize = perMakerSizeOrig * sizeof(uchar) * readLen[block_i] ;
+        int64 loadSize = perMakerSizeOrig * sizeof(uchar) * readLen[block_i] ;
         uchar* bufferAllMarkers = new uchar [loadSize ];
-        fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (startingIdx[block_i]) + nThrowAway, SEEK_SET );
+
+        auto orderIdx = seqNo[startingIdx[block_i]];
+        fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (orderIdx) + nThrowAway, SEEK_SET );
         fread (bufferAllMarkers, 1, loadSize, bedFileReader);
-        dataType*  bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
         dataType** GENO = new dataType* [readLen[block_i]] ;
 #pragma omp parallel for
-        for (unsigned int i = 0; i < readLen[block_i]; i ++)
-        {
+        for (size_t i = 0; i < readLen[block_i]; i ++) {
             GENO[i] = (dataType*) (perMakerSizeOrig * i + bufferAllMarkers);
         }
 #pragma omp parallel for
-        for (unsigned int i = 0; i < readLen[block_i] ; i ++)
+        for (size_t i = 0; i < readLen[block_i] ; i ++)
         {
             dataType* GENO_i = GENO[i] ;
             uint      nMissing = 0;
             double    E_i = 0;
             dataType  marker = 0  ;
             double    sum_i = 0;
+
             for (unsigned int k =0; k < perMakerSize; k ++)
             {
                 marker    = markMissing[ GENO_i[k]  ]  & markMissing[GENO_i[k]]   ;
@@ -447,7 +444,7 @@ BLDFILE::BLDFILE (string filename)
     // this->maf = calcMaf (bfileName, N, M, ncpus);
     cout << "parsing BLD" << endl;
 
-    for (uint i = 0; i < this->bp.size(); i ++)
+    for (size_t i = 0; i < this->bp.size(); i ++)
     {
         this->include.push_back(i);
     }
@@ -466,6 +463,25 @@ BLDFILE::BLDFILE (string filename)
 
 
 };
+void setChr(BedFile ref, string targetChrID)
+{
+    if(targetChrID == "")
+    {
+        printf("[info] Guessing the chrID.\n");
+        string targetChrID=  ref.chrID[0];
+        for (size_t i = 0 ; i < ref.chrID.size(); i ++)
+            if(ref.chrID[i] != targetChrID)
+                stop("[error] More than one chromosome is found. Please specify --chrID");
+    }
+    BedFile tmpBed ;
+    decltype(ref.include) tmpInclude ;
+    for (size_t i = 0 ; i < ref.chrID.size(); i ++)
+    {
+        if(ref.chrID[i] == targetChrID)
+            tmpInclude.push_back(ref.include[i]);
+    }
+    ref.include = tmpInclude;
 
+}
 #endif  // __BFILE__
 
