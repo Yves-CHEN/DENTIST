@@ -13,9 +13,11 @@ Chen, W., Wu, Y., Zheng, Z., Qi, T., Visscher, P. M., Zhu, Z., & Yang, J. (2020)
 
 # Install
 For compiling yourself, I have not made a user-friendly MAKEFILE yet. For now, you can type
-> git clone https://github.com/Yves-CHEN/DENTIST
-> cd DENTIST
-> make
+```
+git clone https://github.com/Yves-CHEN/DENTIST
+cd DENTIST
+make
+```
 and address the dependencies yourself on MKL, BOOST and EIGEN Libraries.
 
 
