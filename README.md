@@ -8,15 +8,24 @@ The method is developed by Wenhan Chen, Zhihong Zhu and [Jian Yang](https://publ
 If you meet any bugs or questions, please send an email to [Wenhan Chen](mailto:uqwche11@uq.edu.au) or [Jian Yang](mailto:jian.yang.qt@gmail.com).
 
 # Citations
-Chen et al. (2020) Improved analyses of GWAS summary statistics by eliminating heterogeneity and errors in data. bioRxiv.
+Chen, W., Wu, Y., Zheng, Z., Qi, T., Visscher, P. M., Zhu, Z., & Yang, J. (2020). Improved analyses of GWAS summary statistics by reducing data heterogeneity and errors. bioRxiv.
+
+
+# Install
+For compiling yourself, I have not made a user-friendly MAKEFILE yet. For now, you can type
+> git clone https://github.com/Yves-CHEN/DENTIST
+> cd DENTIST
+> make
+and address the dependencies yourself on MKL, BOOST and EIGEN Libraries.
+
 
 # Downloads
 ### Pre-compiled Executable Files 
 The executable file below is compiled with "-static" and tested on 64-bit Linux distributions on the x86_64 CPU platform,
-[DENTIST  0.9.1.1](https://www.dropbox.com/s/05sbky2dwihs1b8/DENTIST.0.9.1.1.gz?dl=0)
+[DENTIST  0.9.2.1](https://www.dropbox.com/s/37bc35azxwbzdos/DENTIST.0.9.2.1.gz?dl=0).
 
-To download, you can run,
-> wget -O DENTIST.gz https://www.dropbox.com/s/05sbky2dwihs1b8/DENTIST.0.9.1.1.gz?dl=0
+To download, you can run
+> wget -O DENTIST.gz https://www.dropbox.com/s/37bc35azxwbzdos/DENTIST.0.9.2.1.gz?dl=0
 
 
 # Basic usage
