@@ -244,7 +244,8 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     // 2. validation of the bed file size, given the number of markers and  samples
     // **************************************************************
     FILE* bedFileReader = fopen ( bedFile.c_str()  , "rb" );
-    if (bedFileReader ==NULL) {fputs ("File not found error",stderr); }
+    if (bedFileReader== NULL)
+        stop("[error] cannot write to [%s]", bedFile.c_str());
     fseek (bedFileReader, 0 , SEEK_END);
     lSize = ftell (bedFileReader);
     rewind (bedFileReader);
@@ -451,6 +452,8 @@ BLDFILE::BLDFILE (string filename)
 
 
     FILE*  datFile      = fopen((filename+".bld").c_str(), "r");
+    if (datFile == NULL)
+        stop("[error] cannot write to [%s]", (filename+".bld").c_str());
     // ----------------------------------------------------------------------------
     // read header save in integer (4bytes)
     int headerInfo [5] = {}; // fileSubtype, N, M, LDwindSize, LD in number of Bytes
@@ -468,11 +471,12 @@ void setChr(BedFile ref, string targetChrID)
     if(targetChrID == "")
     {
         printf("[info] Guessing the chrID.\n");
-        string targetChrID=  ref.chrID[0];
+        targetChrID =  ref.chrID[0];
         for (size_t i = 0 ; i < ref.chrID.size(); i ++)
             if(ref.chrID[i] != targetChrID)
                 stop("[error] More than one chromosome is found. Please specify --chrID");
     }
+    cout <<  "[info] chrID == " << targetChrID << endl;
     BedFile tmpBed ;
     decltype(ref.include) tmpInclude ;
     for (size_t i = 0 ; i < ref.chrID.size(); i ++)

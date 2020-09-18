@@ -165,16 +165,6 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int6
    }
 
 
-   std::cout << E[0] << " " << E[1]        << std::endl;
-   std::cout << VAR[0] << " " << VAR[1]    << std::endl;
-   std::cout << "------------------------" << std::endl;
-
-
-
-
-
-    std::cout << "jump" << jump << std::endl;
-
  #pragma omp parallel for
     for (int64 i = 0; i < sizeOfMarkIdx; i ++)
     {

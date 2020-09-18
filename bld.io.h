@@ -112,12 +112,20 @@ int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, 
     bp.resize(ref.include.size());
     for (size_t i =0; i < ref.include.size(); i ++)
         bp [i]    = ref.bp   [ ref.include[i] ];
+    
     findRight(bp.data()+startIdx, dim, right, ldWind);
+
+    //cout << bp [ startIdx ] << endl;
+    //cout << bp [ startIdx +  right [0] ] <<endl;
+    //cout << bp [ startIdx +  right [0] -1 ] <<endl;
+    //cout << right [0] << endl;
+    //cout << dim << endl;
+    //stop("p");
     uint atIdx = 0 ;
     if(!fully)
     {
         for (atIdx =0; atIdx < dim; atIdx ++)
-            if(right[atIdx] == dim) 
+            if(right[atIdx] > dim) 
                 break;
     }
     else
@@ -149,6 +157,8 @@ void saveLD (Options& opt)
 
 template<> void saveLD <int> (Options& opt)
 {
+    if(opt.withNA !=0)
+        cout << "[info] Seting NA genotypes to the mean genetic values in the cohort" << endl;
     string bedfileName = opt.bfileName; 
     const char* outFilePrefix= opt.outPrefix.c_str();
     uint LDwinSize =   opt.maxDist; int ncpus = opt.thread_num;
@@ -158,13 +168,16 @@ template<> void saveLD <int> (Options& opt)
     string rightIdxFile = outPrefix + ".ridx";
     string bldFile      = outPrefix + ".bld";
     FILE*  bldWriter    = fopen(bldFile.c_str(), "w");
+    if (bldWriter == NULL) 
+        stop("[error] cannot write to [%s]", bldFile.c_str());
     ofstream  idxfile2 (rightIdxFile.c_str());
     const     uint maxDim = 200000;
     // read bedfile
     BedFile  ref (bedfileName, opt.mafThresh,  opt.thread_num); // apply MAF thresh
-    setChr(ref, opt.chrID);
     // --maf --extract
+    setChr(ref, opt.chrID);
     trimingBed(ref, opt);
+
     auto  bp    = ref.bp;
     auto  seqNo = ref.seqNo;
     bp.resize(ref.include.size());
@@ -191,10 +204,11 @@ template<> void saveLD <int> (Options& opt)
     for(int i = 5; i < RESERVEDUNITS; i ++) reserved[i]=-9;
     fwrite(&reserved[0],sizeof(int), RESERVEDUNITS, bldWriter);
 
+
     int* LD = new int[ maxDim *  maxDim ]();
     //T* LD = createStorage(maxDim);
     int    jump   = 0;
-    int    withNA = 0;
+    int    withNA = opt.withNA;
     uint startIdx = 0;
     assert (bp.size() >1);
     string genotypeFile = ref.bfileStr + ".bed";
@@ -238,7 +252,6 @@ template<> void saveLD <int> (Options& opt)
         assert(toMove !=0);
         startIdx += toMove;
 
-        cout << "startIdx: " << startIdx << ", bp: "<<  bp [startIdx] << endl;
     }
     while (endIdx !=  bp.size());
     delete[] LD;
@@ -451,6 +464,9 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
     string rightIdxFile = string(outFilePrefix)+".ridx";
     string bldname      = string(outFilePrefix)+".bld";
     FILE*  datFile      = fopen(bldname.c_str(), "r");
+    if (datFile == NULL)
+        stop("[error] cannot write to [%s]", bldname.c_str());
+
     ifstream  idxfile (rightIdxFile.c_str());
     //const int tmpReadBufferSize = 2000000; // read buffer for a row of LD
     // ----------------------------------------------------------------------------
