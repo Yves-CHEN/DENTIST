@@ -14,6 +14,7 @@ public:
     int    maxDist;
     int    thread_num  ;
     double dupThresh   ;
+    
 
     double pValueThreshold;
     double deltaMAF;
@@ -44,6 +45,7 @@ public:
     /// to be implemented
     //  double dupThresh ;  the thresh of LD r^2 between two SNPs to be considered duplicates.
     int nIterations; // the number interations to be performed. At least one.
+    int bytePerUnit;
     //  int qcMethod;    1) use zscore diff 2) zscore_diff/se
     //  int distMethod;  1) by number of snps, 2) by bp  3)by morgan distance.
     //
@@ -122,7 +124,7 @@ public:
         bldLDFile = "";
         flags.push_back("--bld");  // bed file
 
-        outPrefix     = "out";  // default output prefix
+        outPrefix     = "";  // default output prefix
         flags.push_back("--out");
         chrID         = "";  // default output prefix
         flags.push_back("--chrID");
@@ -162,6 +164,9 @@ public:
 
         nIterations = 8;
         flags.push_back("--iteration-num");
+        bytePerUnit = 2;
+
+        flags.push_back("--LD-unit-in-byte");
 
         gcControl = false;
         flags.push_back("--control-inflation");
@@ -257,6 +262,19 @@ void Options::parseOptions(int nArgs, char* option_str[])
             }
             cout << option_str[i-1] << " " << nIterations << endl;
         }
+
+        if(strcmp(option_str[i], "--LD-unit-in-byte") == 0){
+            bytePerUnit = atoi(option_str[++i]);
+            if(!(bytePerUnit  ==1 || bytePerUnit  == 2 || bytePerUnit  == 4 || bytePerUnit  == 8) )
+            {
+                fprintf (stderr, "Error: --LD-unit-in-byte should be in [1,2,4,8] for char, short, int, double \n");
+                exit (EXIT_FAILURE);
+            }
+            cout << option_str[i-1] << " " <<  bytePerUnit << endl;
+        }
+
+
+
 
 
 
@@ -466,6 +484,12 @@ void Options::parseOptions(int nArgs, char* option_str[])
             if(propPCtrunc <= 0 || propPCtrunc > 1)
                 stop("[errors] --SVD-trunc-prop expects a number between (0,1].\n");
         }
+
+    }
+    if(outPrefix == "")
+    {
+        outPrefix = "out"
+        cout<< "--out" << " " << outPrefix <<endl;
 
     }
 

@@ -12,8 +12,8 @@ void saveData (double ld_r, long i, long j, T* storage, long dim) {
 // accutate at the 2th decimal place
 template<>
 void saveData <char>(double ld_r, long i, long j, char* storage, long dim) {
-    storage[dim* i + j] = char(ld_r * 250);
-    storage[dim* j + i] = char(ld_r * 250);
+    storage[dim* i + j] = char(ld_r * 100);
+    storage[dim* j + i] = char(ld_r * 100);
 }
 // accutate at the 4th decimal place
 template<> void saveData <short>(double ld_r, long i, long j, short* storage, long dim) {
@@ -36,6 +36,17 @@ void saveData < smatrix_i >(double ld_r, long i, long j, smatrix_i* storage, lon
     (*storage) (i,j) = int(ld_r * 1e8);  
 }
 
+template<>
+void saveData < smatrix_s >(double ld_r, long i, long j, smatrix_s* storage, long dim) {
+    (*storage) (i,j) = short(ld_r * 1e4);  
+}
+
+template<>
+void saveData < smatrix_c >(double ld_r, long i, long j, smatrix_c* storage, long dim) {
+    (*storage) (i,j) = char(ld_r * 1e2);  
+}
+
+
 template<> 
 void saveData < smatrix_f >(double ld_r, long i, long j, smatrix_f* storage, long dim) {
     (*storage) (i,j) =  ld_r;
@@ -49,7 +60,7 @@ template<class T> double readMatrix(T* storage,  long dim, long i, long j ) {
 }
 // accutate at the 2th decimal place
 template<> double readMatrix<char>(char* storage,  long dim, long i, long j ) {
-    return double(storage[dim *i + j ]) / 250;
+    return double(storage[dim *i + j ]) / 1e2;
 }
 // accutate at the 4th decimal place
 template<> double readMatrix<short>(short* storage,  long dim, long i, long j ) {
@@ -70,6 +81,20 @@ template<> double readMatrix<smatrix_i >(smatrix_i* storage,  long dim, long i, 
     return double( (*storage) (i,j) / 1e8 );
 }
 
+template<> double readMatrix<smatrix_s >(smatrix_s* storage,  long dim, long i, long j )
+{
+    return double( (*storage) (i,j) / 1e4 );
+}
+
+template<> double readMatrix<smatrix_c >(smatrix_c* storage,  long dim, long i, long j )
+{
+    return double( (*storage) (i,j) / 1e2 );
+}
+
+
+
+
+
 
 template<class T>  T* createStorage(long  maxDim){ T* LD = new T[  maxDim*maxDim](); return LD; }
 template<> 
@@ -77,10 +102,13 @@ smatrix_f* createStorage <smatrix_f >(long maxDim){smatrix_f* LD = new smatrix_f
 template<> 
 smatrix_d* createStorage <smatrix_d > (long maxDim){ smatrix_d* LD = new smatrix_d(maxDim); return LD; }
 template<> 
-smatrix_i* createStorage <smatrix_i > (long maxDim){
-    smatrix_i* LD = new smatrix_i(maxDim);
-    return LD;
-}
+smatrix_i* createStorage <smatrix_i > (long maxDim){ smatrix_i* LD = new smatrix_i(maxDim); return LD; }
+template<> 
+smatrix_s* createStorage <smatrix_s > (long maxDim){ smatrix_s* LD = new smatrix_s(maxDim); return LD; }
+template<> 
+smatrix_c* createStorage <smatrix_c > (long maxDim){ smatrix_c* LD = new smatrix_c(maxDim); return LD; }
+
+
 
 template<class T>  void deleteStorage (T* data) { delete[] data; }
 template<> void deleteStorage<smatrix_f > (smatrix_f* data) { delete data; data = NULL; }
@@ -91,20 +119,45 @@ template<> void deleteStorage< smatrix_i> (smatrix_i* data) { delete data; data 
 template<class T> void resize(T* data, long newSize) { }
 
 template<> void resize <smatrix_i > (smatrix_i * data, long newSize) { data->resize(newSize); }
+template<> void resize <smatrix_s > (smatrix_s * data, long newSize) { data->resize(newSize); }
+template<> void resize <smatrix_c > (smatrix_c * data, long newSize) { data->resize(newSize); }
 template<> void resize <smatrix_f > (smatrix_f * data, long newSize) { data->resize(newSize); }
 template<> void resize <smatrix_d > (smatrix_d * data, long newSize) { data->resize(newSize); }
 
-template<class T> 
-void setDiag(T* data, long dim) { for(uint i =0; i < dim; i++) saveData(1, i, i, data,dim); }
+template<class T> void setDiag(T* data, long dim) { for(uint i =0; i < dim; i++) saveData(1, i, i, data,dim); }
 template<> void setDiag<int>(int* data, long dim) { 
-    for(uint i =0; i < dim; i++)
-    saveData(1e8, i, i, data,dim);
-}
-template<>
-void setDiag<smatrix_i>(smatrix_i* data, long dim) {
     for(uint i =0; i < dim; i++)
         saveData(1e8, i, i, data,dim);
 }
+
+template<> void setDiag<short>(short* data, long dim) { 
+    for(uint i =0; i < dim; i++)
+        saveData(1e4, i, i, data,dim);
+}
+
+template<> void setDiag<char>(char* data, long dim) { 
+    for(uint i =0; i < dim; i++)
+        saveData(1e2, i, i, data,dim);
+}
+
+
+
+template<> void setDiag<smatrix_i>(smatrix_i* data, long dim) {
+    for(uint i =0; i < dim; i++)
+        saveData(1e8, i, i, data,dim);
+}
+
+template<> void setDiag<smatrix_s>(smatrix_s* data, long dim) {
+    for(uint i =0; i < dim; i++)
+        saveData(1e4, i, i, data,dim);
+}
+template<> void setDiag<smatrix_c>(smatrix_c* data, long dim) {
+    for(uint i =0; i < dim; i++)
+        saveData(1e2, i, i, data,dim);
+}
+
+
+
 
 
 // this different from moveKeep by creating a tmp matrix store the previous dat
@@ -165,6 +218,8 @@ void findDup(T* result, double rThreshold, std::vector<int>& dupBearer, std::vec
 template smatrix_d* createStorage <smatrix_d > ( long maxDim);
 template smatrix_f*  createStorage <smatrix_f > ( long maxDim);
 template smatrix_i*    createStorage <smatrix_i > ( long maxDim);
+template smatrix_s*    createStorage <smatrix_s > ( long maxDim);
+template smatrix_c*    createStorage <smatrix_c > ( long maxDim);
 
 template double* createStorage <double>( long maxDim);
 template float*  createStorage <float> ( long maxDim);
@@ -176,6 +231,8 @@ template void resize<double>(double* data, long newSize);
 template void resize<int>(int* data, long newSize);
 template void resize<float>(float* data, long newSize);
 template void resize<smatrix_i>(smatrix_i* data, long newSize);
+template void resize<smatrix_s>(smatrix_s* data, long newSize);
+template void resize<smatrix_c>(smatrix_c* data, long newSize);
 template void resize<smatrix_d>(smatrix_d* data, long newSize);
 template void resize<smatrix_f>(smatrix_f* data, long newSize);
 
@@ -183,6 +240,8 @@ template void setDiag<double>(double* data, long);
 template void setDiag<int>(int* data, long);
 template void setDiag<float>(float* data, long);
 template void setDiag<smatrix_i>(smatrix_i* data, long);
+template void setDiag<smatrix_s>(smatrix_s* data, long);
+template void setDiag<smatrix_c>(smatrix_c* data, long);
 template void setDiag<smatrix_d>(smatrix_d* data, long);
 template void setDiag<smatrix_f>(smatrix_f* data, long);
 
@@ -194,16 +253,24 @@ template void setDiag<smatrix_f>(smatrix_f* data, long);
 template void saveData <double> (double ld_r, long i, long j, double* storage, long dim);
 template void saveData <float>  (double ld_r, long i, long j,  float* storage, long dim);
 template void saveData <int>    (double ld_r, long i, long j,    int* storage, long dim);
+template void saveData <short>    (double ld_r, long i, long j,   short* storage, long dim);
+template void saveData <char>    (double ld_r, long i, long j,    char* storage, long dim);
 
 
 template double readMatrix<double>(double* storage,  long dim, long i, long j );
 template double readMatrix<float> (float* storage,  long dim, long i, long j );
 template double readMatrix<int>   (int* storage,  long dim, long i, long j );
+template double readMatrix<short>   (short* storage,  long dim, long i, long j );
+template double readMatrix<char>   (char* storage,  long dim, long i, long j );
 
 template uint    moveKeepProtect<double> (double* LD, uint arrSize, uint currentDim, uint keepFromIdx);
 template uint    moveKeepProtect<float> (float* LD, uint arrSize, uint currentDim, uint keepFromIdx);
 template uint    moveKeepProtect<int> (int* LD, uint arrSize, uint currentDim, uint keepFromIdx);
+template uint    moveKeepProtect<short> (short* LD, uint arrSize, uint currentDim, uint keepFromIdx);
+template uint    moveKeepProtect<char> (char* LD, uint arrSize, uint currentDim, uint keepFromIdx);
 template uint    moveKeepProtect<smatrix_i> (smatrix_i* LD, uint arrSize, uint currentDim, uint keepFromIdx);
+template uint    moveKeepProtect<smatrix_s> (smatrix_s* LD, uint arrSize, uint currentDim, uint keepFromIdx);
+template uint    moveKeepProtect<smatrix_c> (smatrix_c* LD, uint arrSize, uint currentDim, uint keepFromIdx);
 template uint    moveKeepProtect<smatrix_f> (smatrix_f* LD, uint arrSize, uint currentDim, uint keepFromIdx);
 template uint    moveKeepProtect<smatrix_d> (smatrix_d* LD, uint arrSize, uint currentDim, uint keepFromIdx);
 
@@ -212,9 +279,13 @@ template uint    moveKeepProtect<smatrix_d> (smatrix_d* LD, uint arrSize, uint c
 template void findDup<double>(double* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
 template void findDup<float>(float* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
 template void findDup<int>(int* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
+template void findDup<short>(short* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
+template void findDup<char>(char* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
 template void findDup<smatrix_d>(smatrix_d* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
 template void findDup<smatrix_f> (smatrix_f* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
 template void findDup<smatrix_i>   (smatrix_i* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
+template void findDup<smatrix_s>   (smatrix_s* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
+template void findDup<smatrix_c>   (smatrix_c* result, double rThreshold, std::vector<int>& dupBearer, std::vector<double>& corABS, std::vector<int>& sign);
 
 #endif //STORAGE_H
 

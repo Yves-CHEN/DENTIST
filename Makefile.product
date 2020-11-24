@@ -3,7 +3,7 @@ dirs = builts
 
 
 # Name of the executable.
-OUTPUT = ./release/DENTIST.0.9.2.1
+OUTPUT = ./release/DENTIST.0.9.2.2
 
 # Compiler
 #CXX =  /gpfs1/scratch/90days/uqzzhen4/local/.local/bin/g++-7

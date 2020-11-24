@@ -1084,7 +1084,8 @@ void runQC(const Options& opt)
     else
         ref  = BedFile(bfileName, opt.mafThresh, opt.thread_num); // read bedfile
 
-    setChr(ref,opt.chrID);
+    if(!opt.loadLD)
+        setChr(ref,opt.chrID);
 
 
     if(opt.targetSNP != "" && opt.targetBP != -1)
@@ -1200,6 +1201,7 @@ void runQC(const Options& opt)
 
 
 }
+
 
 #endif  //  __DENTIST__
 

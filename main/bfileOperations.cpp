@@ -835,6 +835,8 @@ int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theM
 
 
 template int _LDFromBfile <int>        (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, int* result, int* jump, int* withNA);
+template int _LDFromBfile <short>        (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,short* result, int* jump, int* withNA);
+template int _LDFromBfile <char>        (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, char* result, int* jump, int* withNA);
 template int _LDFromBfile <float>      (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, float* result, int* jump, int* withNA);
 template int _LDFromBfile <double>     (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus,double* result, int* jump, int* withNA);
 template int _LDFromBfile <smatrix_d > (char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theMarkIdx, uint* arrSize, uint* toAvert, int* cutoff, int* ncpus, smatrix_d* result, int* jump, int* withNA);

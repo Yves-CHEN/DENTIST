@@ -30,9 +30,11 @@ cout << "*******************************************************************" <<
     assert (sizeof(int64) == 8);
 
 
-
     string summmaryFile  = "/home/uqwche11/30days/simulation.UK10K//anaHeight/summaryData/height_UKB_FULLSAMPLE_Julia.txt";
     string bfileName     = "/home/uqwche11/30days/simulation.UK10K/Data/hrs.hm2/hrs_hm2_chr22";
+
+
+
     Options opt;
     opt.parseOptions (argc, argv);
  //   if(opt.chrID == "")
@@ -50,7 +52,15 @@ cout << "*******************************************************************" <<
     {
 //        saveLD<int>(opt.bfileName, opt.outPrefix.c_str(), 
 //                            opt.maxDist, opt.thread_num);
-        saveLD<int>(opt);
+        if(opt.bytePerUnit == 1)
+            saveLD<char>(opt);
+        else if(opt.bytePerUnit == 2)
+            saveLD<short>(opt);
+        else if(opt.bytePerUnit == 4)
+        {
+            cout << "save as int " << endl;
+            saveLD<int>(opt);
+        }
     }
 
     if( opt.doFreq)

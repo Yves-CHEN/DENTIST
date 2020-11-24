@@ -41,13 +41,24 @@ int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nSamples, int64* theM
 
 //typedef short LDType ;
 int const RESERVEDUNITS  = 10000;
+
+// This is to find the right most neighbor (RMN) under the threshold of wind, 
+//   given the bp of site.
+// It only gets the RMN for the 1st - kth sites, k = min (dim, right.size() )
 void findRight(const int* bp, int dim, vector<int>& right, int wind)
 {
     int j = 0;
+    // stop after visiting last element of bp.
     for (int i =1; i < dim; i ++)
+    {
         while (bp[i] > bp[j] + wind )
+        {
             right[j++] = i; 
-    while(j != dim )  // fills the last bits at end of the vector
+            if (j == right.size()) break;
+        }
+        if (j == right.size()) break;
+    }
+    while(j != right.size())  // fills the last bits at end of the vector
         right[j++] = dim ;
 }
 
@@ -95,17 +106,81 @@ void trimingBed(BedFile& ref, const Options& opt)
 template <class T>
 int writeLD2File_wind(FILE* outfile, ofstream& idxfile, T* LD, int dim, const BedFile& ref, int ldWind, uint startIdx, bool fully)
 {
-    stop("[error] Not implemented.");
-    return 0;
+
+    cout << "no implemented" <<endl;
+    //vector<int> right(dim, 0);
+//    auto bp = ref.bp;
+//    bp.resize(ref.include.size());
+//    for (size_t i =0; i < ref.include.size(); i ++)
+//        bp [i]    = ref.bp   [ ref.include[i] ];
+//    
+//    findRight(bp.data()+startIdx, bp.size() - startIdx, right, ldWind);
+//    uint atIdx = 0 ;
+//    if(!fully)
+//    {
+//        for (atIdx =0; atIdx < dim; atIdx ++)
+//            if(right[atIdx] > dim) 
+//                break;
+//    }
+//    else
+//        atIdx = dim;
+//    /// write index
+//    for(int i =0; i < atIdx;i ++)
+//    {
+//        idxfile <<  ref.print(startIdx +i) << "\t" << i + startIdx << "\t" << right[i] 
+//            << "\t" << right[i] - i << endl;
+//
+//    }
+//    
+//    /// write dat
+//    for(int i =0; i < atIdx;i ++)
+//    {
+//        int j = right[i];
+//        fwrite(LD + i*dim+i +1, sizeof(T), j -i -1 ,  outfile);  
+//    }
+//    return atIdx;
+
 }
 
-// int writeLD2File_wind<int>(FILE* outfile, ofstream& idxfile, int* LD, int dim,
-//         const BedFile& ref, int ldWind, uint startIdx, bool fully)
 
-
-//template int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, const BedFile& ref, int ldWind, uint startIdx, bool fully);
+// template <>
+// int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, const BedFile& ref, int ldWind, uint startIdx, bool fully)
+// {
+//     cout << "int" << endl;
+//     vector<int> right(dim, 0);
+//     auto bp = ref.bp;
+//     bp.resize(ref.include.size());
+//     for (size_t i =0; i < ref.include.size(); i ++)
+//         bp [i]    = ref.bp   [ ref.include[i] ];
+//     
+//     findRight(bp.data()+startIdx, bp.size() - startIdx, right, ldWind);
+//     uint atIdx = 0 ;
+//     if(!fully)
+//     {
+//         for (atIdx =0; atIdx < dim; atIdx ++)
+//             if(right[atIdx] > dim) 
+//                 break;
+//     }
+//     else
+//         atIdx = dim;
+//     /// write index
+//     for(int i =0; i < atIdx;i ++)
+//     {
+//         idxfile <<  ref.print(startIdx +i) << "\t" << i + startIdx << "\t" << right[i] 
+//             << "\t" << right[i] - i << endl;
+// 
+//     }
+//     
+//     /// write dat
+//     for(int i =0; i < atIdx;i ++)
+//     {
+//         int j = right[i];
+//         fwrite(LD + i*dim+i +1, sizeof(int), j -i -1 ,  outfile);  
+//     }
+//     return atIdx;
+// }
 template <>
-int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, const BedFile& ref, int ldWind, uint startIdx, bool fully)
+int writeLD2File_wind <char>(FILE* outfile, ofstream& idxfile,char* LD, int dim, const BedFile& ref, int ldWind, uint startIdx, bool fully)
 {
     vector<int> right(dim, 0);
     auto bp = ref.bp;
@@ -113,14 +188,7 @@ int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, 
     for (size_t i =0; i < ref.include.size(); i ++)
         bp [i]    = ref.bp   [ ref.include[i] ];
     
-    findRight(bp.data()+startIdx, dim, right, ldWind);
-
-    //cout << bp [ startIdx ] << endl;
-    //cout << bp [ startIdx +  right [0] ] <<endl;
-    //cout << bp [ startIdx +  right [0] -1 ] <<endl;
-    //cout << right [0] << endl;
-    //cout << dim << endl;
-    //stop("p");
+    findRight(bp.data()+startIdx, bp.size() - startIdx, right, ldWind);
     uint atIdx = 0 ;
     if(!fully)
     {
@@ -132,8 +200,47 @@ int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, 
         atIdx = dim;
     /// write index
     for(int i =0; i < atIdx;i ++)
+    {
         idxfile <<  ref.print(startIdx +i) << "\t" << i + startIdx << "\t" << right[i] 
             << "\t" << right[i] - i << endl;
+
+    }
+    
+    /// write dat
+    for(int i =0; i < atIdx;i ++)
+    {
+        int j = right[i];
+        fwrite(LD + i*dim+i +1, sizeof(char), j -i -1 ,  outfile);  
+    }
+    return atIdx;
+}
+template <>
+int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile,int* LD, int dim, const BedFile& ref, int ldWind, uint startIdx, bool fully)
+{
+    vector<int> right(dim, 0);
+    auto bp = ref.bp;
+    bp.resize(ref.include.size());
+    for (size_t i =0; i < ref.include.size(); i ++)
+        bp [i]    = ref.bp   [ ref.include[i] ];
+    
+    findRight(bp.data()+startIdx, bp.size() - startIdx, right, ldWind);
+    uint atIdx = 0 ;
+    if(!fully)
+    {
+        for (atIdx =0; atIdx < dim; atIdx ++)
+            if(right[atIdx] > dim) 
+                break;
+    }
+    else
+        atIdx = dim;
+    /// write index
+    for(int i =0; i < atIdx;i ++)
+    {
+        idxfile <<  ref.print(startIdx +i) << "\t" << i + startIdx << "\t" << right[i] 
+            << "\t" << right[i] - i << endl;
+
+    }
+    
     /// write dat
     for(int i =0; i < atIdx;i ++)
     {
@@ -144,19 +251,57 @@ int writeLD2File_wind <int>(FILE* outfile, ofstream& idxfile, int* LD, int dim, 
 }
 
 
+template <>
+int writeLD2File_wind <short>(FILE* outfile, ofstream& idxfile, short* LD, int dim, const BedFile& ref, int ldWind, uint startIdx, bool fully)
+{
+    vector<int> right(dim, 0);
+    auto bp = ref.bp;
+    bp.resize(ref.include.size());
+    for (size_t i =0; i < ref.include.size(); i ++)
+        bp [i]    = ref.bp   [ ref.include[i] ];
+    
+    findRight(bp.data()+startIdx, bp.size() - startIdx, right, ldWind);
+    uint atIdx = 0 ;
+    if(!fully)
+    {
+        for (atIdx =0; atIdx < dim; atIdx ++)
+            if(right[atIdx] > dim) 
+                break;
+    }
+    else
+        atIdx = dim;
+    /// write index
+    for(int i =0; i < atIdx;i ++)
+    {
+        idxfile <<  ref.print(startIdx +i) << "\t" << i + startIdx << "\t" << right[i] 
+            << "\t" << right[i] - i << endl;
+
+    }
+    
+    /// write dat
+    for(int i =0; i < atIdx;i ++)
+    {
+        int j = right[i];
+        fwrite(LD + i*dim+i +1, sizeof(short), j -i -1 ,  outfile);  
+    }
+    return atIdx;
+}
+
+
 
 // Require: bed file
 // Accept: --extract --maf
 // Reject: --target
 //
-template<class T>
-void saveLD (Options& opt)
-{
-    stop("Not implemented yet.\n");
-}
+//template<class T>
+//void saveLD (Options& opt)
+//{
+//    stop("Not implemented yet.\n");
+//}
 
-template<> void saveLD <int> (Options& opt)
+template<class T> void saveLD  (Options& opt)
 {
+    int bytePerUnit =  opt.bytePerUnit;
     if(opt.withNA !=0)
         cout << "[info] Seting NA genotypes to the mean genetic values in the cohort" << endl;
     string bedfileName = opt.bfileName; 
@@ -174,9 +319,11 @@ template<> void saveLD <int> (Options& opt)
     const     uint maxDim = 200000;
     // read bedfile
     BedFile  ref (bedfileName, opt.mafThresh,  opt.thread_num); // apply MAF thresh
+   
     // --maf --extract
     setChr(ref, opt.chrID);
     trimingBed(ref, opt);
+    
 
     auto  bp    = ref.bp;
     auto  seqNo = ref.seqNo;
@@ -200,12 +347,12 @@ template<> void saveLD <int> (Options& opt)
     reserved[1]  = ref.N;
     reserved[2]  = ref.include.size();
     reserved[3]  = LDwinSize;
-    reserved[4]  = sizeof(int); // number bytes
+    reserved[4]  = bytePerUnit; // number bytes
     for(int i = 5; i < RESERVEDUNITS; i ++) reserved[i]=-9;
-    fwrite(&reserved[0],sizeof(int), RESERVEDUNITS, bldWriter);
+    fwrite(&reserved[0], 4, RESERVEDUNITS, bldWriter);
 
 
-    int* LD = new int[ maxDim *  maxDim ]();
+    T* LD = new T[ maxDim *  maxDim ]();
     //T* LD = createStorage(maxDim);
     int    jump   = 0;
     int    withNA = opt.withNA;
@@ -225,7 +372,7 @@ template<> void saveLD <int> (Options& opt)
     do
     {
         endIdx = right[startIdx];
-        int nKept = moveKeepProtect<int>( LD, rangeSize, endIdx - startIdx, toMove); 
+        int nKept = moveKeepProtect<T>( LD, rangeSize, endIdx - startIdx, toMove); 
         jump = nKept;
         rangeSize = endIdx - startIdx;
         assert(rangeSize < maxDim);
@@ -237,20 +384,23 @@ template<> void saveLD <int> (Options& opt)
         for (auto i = startIdx; i < endIdx; i ++) 
              theMarkIdx[i-startIdx] = seqNo[i];
 
-        _LDFromBfile <int>(&head, &M, &N, theMarkIdx, &rangeSize,
+        _LDFromBfile <T>(&head, &M, &N, theMarkIdx, &rangeSize,
                 toAvert, &cutoff,  &ncpus, LD, &jump, &withNA);
         delete[] theMarkIdx;
         delete[] toAvert;
-        //  Save LD
+
+                //  Save LD
         //int* bp_tmp= new int[rangeSize]();
         //for(uint i =0; i < rangeSize; i ++)
         //    bp_tmp[i] = ref.bp[startIdx + i];
         //int* bp_tmp = ref.bp.data() + startIdx;
-        toMove = writeLD2File_wind<int>(bldWriter, idxfile2, LD, rangeSize, ref,
+        toMove = writeLD2File_wind<T>(bldWriter, idxfile2, LD, rangeSize, ref,
                 LDwinSize, startIdx, endIdx == bp.size());
         //delete[] bp_tmp;
         assert(toMove !=0);
         startIdx += toMove;
+        
+
 
     }
     while (endIdx !=  bp.size());
@@ -265,29 +415,6 @@ template<> void saveLD <int> (Options& opt)
 
 
 
-
-
-
-
-
-
-// assume LD (r) is needed.
-// assume per-chr calculation
-// assume bed is ordered by bp
-// from which SNPi to SNPj
-// given the right most element
-//  assume dim >1
-//  assume length ( rightMostIdx) >= dim -1
-//void writeLD2File_wind(FILE* outfile, LDType LD[], int dim, int*  rightMostIdx, int fromIdx,  int toIdx)
-//{
-//    
-//    int* right = rightMostIdx;
-//    for(int i = fromIdx; i < toIdx;i ++)
-//    {
-//        int j = right[i];
-//        fwrite(LD + i*dim+i +1, sizeof(LDType), j -i -1 ,  outfile);  
-//    }
-//}
 
 
 
@@ -371,7 +498,6 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
     int SaveInNumByte = headerInfo[4];
     assert (toIdx - fromIdx <= windowSize);
     rewind(datFile);
-    cout << "SaveInNumByte " << SaveInNumByte << endl;
 
     // --------------------------------------------------------------------------
     // load the right most element Idx. 
@@ -386,8 +512,8 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
         string cbuf = "0";
         double dbuf = 0.0;
         string str_buf;
-        //while(idxfile >> str_buf >> str_buf >> dbuf >> ibuf >> cbuf >> cbuf >> snpIdx  >> ridx >> dist)
-        while (idxfile >> snpIdx  >> ridx >> dist)  // expect 3-column file format
+        while(idxfile >> str_buf >> str_buf >> dbuf >> ibuf >> cbuf >> cbuf >> snpIdx  >> ridx >> dist)
+        //while (idxfile >> snpIdx  >> ridx >> dist)  // expect 3-column file format
         {
             loc.push_back(sum ); 
             // *sizeof(LDTtype) :  multiply number of bytes to jump to next_i
@@ -400,6 +526,26 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
         stop("Unable to open file [%s]", rightIdxFile.c_str() );
     assert (rowLen.size() > (toIdx - fromIdx));
 
+    //
+   if(SaveInNumByte == 1)
+    {
+        char* LD = new char[dim * dim](); /// new and set zeros
+        int SaveUpTo = dim -1;
+        for(int i = fromIdx, k = 0; i < toIdx -1;i ++, k ++)
+        {
+            // fwind
+            fseek ( datFile,  loc[i] , SEEK_SET );
+            fread(&LD [ k * dim + k +1], SaveInNumByte, SaveUpTo ,datFile);  
+            SaveUpTo  --;
+        }
+        for (size_t i = 0; i < dim-1; i ++)
+            for (size_t j = i+1; j < dim; j ++)
+                LD[j*dim + i] = LD[i*dim + j]  ;
+        for (size_t i = 0; i < dim; i ++)
+            for (size_t j = 0; j < dim; j ++)
+                LD_typeT[i*dim + j] = double(LD[i*dim + j] * 1.0 / 100)  ;
+        delete[] LD;
+    } 
     /// --------------------------------
     /// Reading LD matrix.
     if(SaveInNumByte == 2)
@@ -423,6 +569,7 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
     }
     if(SaveInNumByte == 4)
     {
+
         int* LD = new int[dim * dim](); /// new and set zeros
         uint scaler  = 1e8;
         for (size_t i = 0; i < dim; i ++)
@@ -435,6 +582,7 @@ double* readLDFromFile_FromTo(string ldDatFilePrefix, int windowSize, int fromId
             fread(&LD [ k * dim + k +1], SaveInNumByte, SaveUpTo ,datFile);  
             SaveUpTo  --;
         }
+
         for (size_t i = 0; i < dim-1; i ++)
             for (size_t j = i+1; j < dim; j ++)
                 LD[j*dim + i] = LD[i*dim + j]  ;
@@ -533,10 +681,6 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
 
     fclose(datFile);
     idxfile.close();
-    cout << "loaded" << endl;
-
-    cout <<  SaveInNumByte << endl;
-        cout << sizeof(T) << endl;
     T* LD_typeT =  NULL;
 
     if(sizeof(T) == SaveInNumByte)
@@ -548,8 +692,6 @@ T* readLDFromFile_at(string ldDatFilePrefix, int windowSize, int fromIdx)
         T* LD_typeT = new T[dim * dim](); /// new and set zeros
         if(SaveInNumByte ==2) // saved in short, but expecting float or double
         {
-
-        cout << "tt2" << endl;
             short* LD = (short*) LD_untyped;
             for (size_t i = 0; i < dim-1; i ++)
                 for (size_t j = i+1; j < dim; j ++)
