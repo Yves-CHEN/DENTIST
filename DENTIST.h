@@ -267,7 +267,7 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
 
     ofstream exclOut (outFilePrefix + ".DENTIST.excluded.txt",  std::fstream::app);
     vector<string> msg;
-    msg.push_back("notFoundInReference");
+    msg.push_back("notFoundInGWAS");
     msg.push_back("AF_QC");
 
     for (size_t kk =0; kk < ref.include.size(); kk ++)
@@ -294,7 +294,7 @@ void deltaMAF(GWAS&   gwas, BedFile& ref, double threshold, vector<bool>& toFlip
         else
         {
             exclOut << key << "\t" <<
-                  msg [ (fabs(m1[key] - m2[key]) < threshold ) + 1] << endl;
+                  msg [ (fabs(m1[key] - m2[key]) < threshold ) + 1] << " gwas: "<< m1[key]  << " v.s. ref: " << m2[key]  << endl;
         }
     }
 
@@ -832,7 +832,8 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
     ofstream exclOut (outFilePrefix + ".DENTIST.excluded.txt"); 
 
     vector<string> msg;
-    msg.push_back("notFoundInReference");
+    msg.push_back("notFoundInGWAS");
+    msg.push_back("unmatchedAlleles");
     include_tmp.resize(0);
     for (long int k =0 ; k < btab.include.size(); k ++)
     {
@@ -867,7 +868,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
                 include_tmp.push_back(j);
             sum ++;
             }  else
-                exclOut << btab.rs[j] << "\t" << msg [0] << endl;
+                exclOut << btab.rs[j] << "\t" << btab.A1[j] << "\t" << btab.A2[j]   << "\t" << msg [1] << endl;
         }
         else
             exclOut << btab.rs[j] << "\t" << msg [0] << endl;

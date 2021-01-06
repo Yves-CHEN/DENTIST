@@ -488,7 +488,7 @@ void Options::parseOptions(int nArgs, char* option_str[])
     }
     if(outPrefix == "")
     {
-        outPrefix = "out"
+        outPrefix = "out";
         cout<< "--out" << " " << outPrefix <<endl;
 
     }

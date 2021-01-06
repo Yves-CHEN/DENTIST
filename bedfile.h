@@ -355,7 +355,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
                 sum_i    += countOnes[GENO_i [k] & marker];
             }
             E_i         = double(sum_i  ) / (nKeptSample - nMissing - nBlanks);
-            maf[startingIdx[block_i] + i] =  E_i / 2;
+            maf[startingIdx[block_i] + i] = 1-  E_i / 2;
         }
         delete [] bufferAllMarkers;
         delete [] GENO;
