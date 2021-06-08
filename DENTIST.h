@@ -233,7 +233,7 @@ map<string, double> createMap(const vector<string>& rsID, const vector<double>& 
         if(mm.find(key) == mm.end())
             mm [key]   = ff;
         else
-            stop("[error] duplicated key [%s]. \n", key);
+            stop("[error] duplicated key [%s]. \n", key.c_str());
     }
     return mm;
 }
@@ -470,6 +470,7 @@ public:
     double*   zScores_e ;
     bool  *   ifDup     ;
     double*   sigma_ii_sq;
+    int*      iterID;      // this notes the z-score was calcualted at which iter.
     
     inline ImputeOperator ( vector<int64>&   seqNos , vector<double>&  zScores,    
             vector<string>&   rsIDs    , vector<bool  >&   toAvert  ,
@@ -485,6 +486,7 @@ public:
         this->zScores_e= new double[zScores.size()]();
         this->ifDup    = new bool  [zScores.size()]();
         this->sigma_ii_sq = new double[zScores.size()]();
+        this->iterID   = new int[zScores.size()]();
         std::copy(seqNos.begin(),  seqNos.end(), this->seqNos);
         std::copy(zScores.begin(), zScores.end(),this->zScores);
         std::copy(rsIDs.begin(),   rsIDs.end(),  this->rsIDs);
@@ -505,6 +507,7 @@ public:
         delete[] zScores_e ;        
         delete[] ifDup     ;    
         delete[] sigma_ii_sq;
+        delete[] iterID;
     };
 
 };
@@ -635,7 +638,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
                 runDENTIST<LDType2>( nSamples,
                      impOp.zScores + startIdx,
                      cutoff, thread_num,
-                     impOp.imputed, impOp.rsq, impOp.zScores_e, impOp.ifDup,
+                     impOp.imputed, impOp.rsq, impOp.zScores_e, impOp.ifDup, impOp.iterID,
                      startIdx, fillStartIdx, fillEndIdx, LD,  opt);
             }
         }

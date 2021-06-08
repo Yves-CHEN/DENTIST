@@ -1,3 +1,4 @@
+#include <functional>
 #include "dataTypeDef.h"
 #include "utils.h"
 #include "stats/FDR.h"
@@ -15,6 +16,39 @@ T getQuantile(const std::vector<T>& dat, double whichQuantile)
      std::sort (diff2.begin(), diff2.end());
      T threshold = diff2[ ceil(diff2.size()  * ( whichQuantile))  -1 ] ;
      return (threshold);
+}
+
+template <class T>
+T getQuantile2(const std::vector<T>& dat, std::vector<uint> grouping, double whichQuantile)
+{
+
+    int sum = std::accumulate(grouping.begin(), grouping.end(), 0);
+    cout << "sum: " << sum << endl;
+
+    if(sum <50)
+    {
+        return 0;
+    }
+
+     std::vector<T> diff2;
+     for (uint i =0; i < dat.size(); i ++)
+     {
+         if(grouping[i] ==1) 
+             diff2.push_back(dat[i]);
+     }
+     std::sort (diff2.begin(), diff2.end());
+     T threshold = diff2[ ceil(diff2.size()  * ( whichQuantile))  -1 ] ;
+     return threshold;
+}
+
+
+
+template <class T>
+std::vector<T>& operator!(std::vector<T>& logicalDat)
+{
+    for (uint i =0 ; i < logicalDat.size(); i ++)
+        logicalDat[i] = 1- logicalDat[i] ;
+    return logicalDat;
 }
 
 // 
@@ -301,7 +335,6 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
     for (int j=0; j<nRank; j++) 
         if ( es.eigenvalues()(j) < 0.0001) nZeros ++;
     nRank = nRank - nZeros;
-    D(cout << "nRank: "  << nRank <<"K: " << K << endl;);
     if(K>nRank) K = nRank ;
 
     Eigen::MatrixXd  ui = Eigen::MatrixXd::Identity(es.eigenvectors().rows(), K);
@@ -549,11 +582,12 @@ void impute(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 
 template <class T>
 void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,  
-        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus)
+        double* imputedZ, double* rsq, double* zScore_e, int* iterID,
+        double pValueThreshold,  
+        int* interested, float propSVD, bool gcControl, int nIter,
+        double groupingPvalue_thresh, int* ncpus)
 {
  
-    //double internalControl = 5.45;
     D(printf("\n------------------------\n");                 );
     D(printf("--------- DENTIST  ---------\n");               );
     D(printf("ncpus = %d \n", *ncpus);                        );
@@ -564,7 +598,8 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         omp_set_num_threads( nProcessors );
 
     // init
-    std::vector<size_t> randOrder = generateSetOfNumbers(*markerSize, 10);
+    int seed = 10;
+    std::vector<size_t> randOrder = generateSetOfNumbers(*markerSize, seed);
     std::vector<uint> idx;
     std::vector<uint> idx2;
     std::vector<size_t> fullIdx = randOrder;
@@ -577,10 +612,20 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
     }
 
 
+    std::vector<uint> groupingGWAS (*markerSize,0);
+    double groupThresh =  groupingPvalue_thresh;
+    for (uint i =0; i < *markerSize; i ++)
+    {
+        if( minusLogPvalueChisq2(zScore[i]*zScore[i]) > -log10(groupThresh) )
+            groupingGWAS [i] =1;
+    }
+
+
+
 
     std::vector<double> diff;
+    std::vector<uint> grouping_tmp;
 
-    //for (uint t =0; t < 1; t ++)
     for (uint t =0; t < nIter; t ++)
     {
         std::vector<uint> idx2_QCed;
@@ -591,22 +636,51 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
 
 
         diff.resize(idx2.size());
-        // for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore[idx2[i]] - imputedZ[idx2[i]]);
-        for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[idx2[i]]);
-        threshold = getQuantile <double> (diff , (99/100.0)) ;
-        D(printf("thresh %f \n", threshold););
+        grouping_tmp.resize(idx2.size());
+        for(uint i = 0; i < diff.size(); i ++) { 
+            diff[i] = fabs(zScore_e[idx2[i]]);
+            grouping_tmp[i] = groupingGWAS[idx2[i]];
+
+        }
+        // threshold1 for large Zscores, threshold2 for smaller
+        threshold = getQuantile <double> (diff,  (99.5/100.0)) ; 
+        double threshold1 = getQuantile2 <double> (diff,grouping_tmp ,  (99.5/100.0)) ; 
+        double threshold0 = getQuantile2 <double> (diff,!grouping_tmp , (99.5/100.0)) ;
+        if(threshold1 == 0){ threshold1 = threshold; threshold0 = threshold; }
+
+        if(t > nIter -2 )
+        {
+            threshold0 =  threshold;
+            threshold1 =  threshold;
+        }
+
+
         for(uint i = 0; i < diff.size(); i ++)
         {
-            if( (diff[i] < threshold) ) 
+            if( grouping_tmp[i]==1 && (diff[i] <= threshold1)   ) 
                 idx2_QCed.push_back(idx2[i]);
-            // else
-            //     idx.push_back(idx2[i]);
+            if( grouping_tmp[i]==0 && (diff[i] <= threshold0)   ) 
+                idx2_QCed.push_back(idx2[i]);
+
         }
         oneIteration<T>(LDmat, markerSize, zScore, idx2_QCed, idx, imputedZ, rsq, zScore_e, *nSample, propSVD, ncpus);
         diff.resize(fullIdx.size());
+        grouping_tmp.resize(fullIdx.size());
 
-        for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(zScore_e[fullIdx[i]]);
+        for(uint i = 0; i < diff.size(); i ++) {
+            diff[i] = fabs(zScore_e[fullIdx[i]]);
+            grouping_tmp[i] = groupingGWAS[fullIdx[i]];
+        }
         threshold = getQuantile <double> (diff , (99.5/100.0)) ;
+        threshold1 = getQuantile2 <double> (diff,grouping_tmp ,  (99.5/100.0)) ; 
+        threshold0 = getQuantile2 <double> (diff,!grouping_tmp , (99.5/100.0)) ;
+
+        if(t > nIter -2 )
+        {
+            threshold0 =  threshold;
+            threshold1 =  threshold;
+        }
+        if(threshold1 == 0){ threshold1 = threshold; threshold0 = threshold; }
         std::vector<double> chisq;
         for(uint i = 0; i < diff.size(); i ++)
         {
@@ -631,8 +705,22 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
             } 
             else
             {
-                if( !(diff[i] > threshold && minusLogPvalueChisq2(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
-                    fullIdx_tmp.push_back(fullIdx[i]);
+                //if( !(diff[i] > threshold && minusLogPvalueChisq2(  diff[i] * diff[i] ) >  -log10(pValueThreshold)) ) 
+                if(  minusLogPvalueChisq2(  diff[i] * diff[i] ) <  -log10(pValueThreshold) ) 
+                {
+                
+                    if(grouping_tmp[i] ==1 && diff[i] <= threshold1)
+                    {
+                        fullIdx_tmp.push_back(fullIdx[i]);
+                        iterID [ fullIdx[i] ] ++;
+                    }
+                    else if(grouping_tmp[i] ==0 && diff[i] <= threshold0)
+                    {
+                        fullIdx_tmp.push_back(fullIdx[i]);
+                        iterID [ fullIdx[i] ] ++;
+                    }
+
+                }
             }
         }
         fullIdx = fullIdx_tmp;
@@ -648,40 +736,24 @@ void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
         }
     }
 
-    // //  Rescue
-    // diff.resize(fullIdx.size());
-    // for(uint i = 0; i < diff.size(); i ++) diff[i] = fabs(rsq[fullIdx[i]]);
-    // double threshold = getQuantile <double> (diff , (20/100.0)) ;
-    // for(uint i = 0; i < diff.size(); i ++)
-    // {
-    //     if( (diff[i] < threshold) )
-    //         idx.push_back(fullIdx[i]);
-    //     else
-    //         idx2.push_back(fullIdx[i]);
-    // }
-    // oneIteration<T>(LDmat, markerSize, zScore, idx2, idx, imputedZ, rsq, zScore_e,  ncpus);
-
-
 }
 // instantiate T into float
 template void DENTIST <float>(float* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
-
-
+        double* imputedZ, double* rsq, double* zScore_e, int* iterID,  double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, double, int* ncpus);
 template void  DENTIST<double >(double* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e, double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+        double* imputedZ, double* rsq, double* zScore_e, int* iterID, double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, double, int* ncpus);
 
 template void DENTIST <smatrix_d >(smatrix_d* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+        double* imputedZ, double* rsq, double* zScore_e,  int* iterID, double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, double, int* ncpus);
 template void DENTIST <smatrix_f >(smatrix_f* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+        double* imputedZ, double* rsq, double* zScore_e,  int* iterID, double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, double, int* ncpus);
 template void DENTIST <smatrix_i >(smatrix_i* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e,  double pValueThreshold,
-        int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+        double* imputedZ, double* rsq, double* zScore_e,  int* iterID, double pValueThreshold,
+        int* interested, float propSVD, bool gcControl, int nIter, double, int* ncpus);
 
 
 

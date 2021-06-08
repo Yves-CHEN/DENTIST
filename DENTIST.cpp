@@ -30,8 +30,8 @@ cout << "*******************************************************************" <<
     assert (sizeof(int64) == 8);
 
 
-    string summmaryFile  = "/home/uqwche11/30days/simulation.UK10K//anaHeight/summaryData/height_UKB_FULLSAMPLE_Julia.txt";
-    string bfileName     = "/home/uqwche11/30days/simulation.UK10K/Data/hrs.hm2/hrs_hm2_chr22";
+    string summmaryFile  = "";
+    string bfileName     = "";
 
 
 

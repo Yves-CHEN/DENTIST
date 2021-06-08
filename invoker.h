@@ -11,7 +11,8 @@ template<class T>  int _LDFromBfile(char** bedFileCstr, uint* nMarkers, uint* nS
 /// 
 /// 
 template<class T> void DENTIST(T* LDmat, uint* markerSize, uint* nSample, double* zScore,
-        double* imputedZ, double* rsq, double* zScore_e, double pValueThresh,  int* interested, float propSVD, bool gcControl, int nIter, int* ncpus);
+        double* imputedZ, double* rsq, double* zScore_e, int* iterID, double pValueThresh,
+        int* interested, float propSVD, bool gcControl, int nIter,  double, int* ncpus);
 
 template<class T> void impute(T* LDmat, uint* markerSize, uint* nSample,
         double* zScore, double* imputedZ, double* rsq, double* zScore_e,
@@ -47,7 +48,7 @@ template<class T>
 void runDENTIST( uint nSamples,
         double* the_zScores,  
         int cutoff,   int ncpus,  double* imputedZ,
-        double* rsq, double* zScore_e, bool* ifDup,
+        double* rsq, double* zScore_e, bool* ifDup, int* iterID,
         int thePos, int startIdx, int endIdx, T* result,
         const Options& opt)
 {
@@ -66,6 +67,7 @@ void runDENTIST( uint nSamples,
     int interested = -1;
     double*   zScores_tmp = new double[ arrSize]() ;
     double*  imputedZ_tmp = new double[ arrSize]() ;
+    int*     iterID_tmp   = new int[ arrSize]() ;
     double*       rsq_tmp = new double[ arrSize]() ;
     double*  zScore_e_tmp = new double[ arrSize]() ;
     uint      arrSize_tmp = arrSize - sum;
@@ -90,8 +92,8 @@ void runDENTIST( uint nSamples,
         }
     }
     DENTIST<T>(resultNoDup, &arrSize_tmp,  &nSamples, zScores_tmp,
-            imputedZ_tmp, rsq_tmp, zScore_e_tmp, opt.pValueThreshold,
-            &interested, opt.propPCtrunc, opt.gcControl, opt.nIterations, &ncpus);
+            imputedZ_tmp, rsq_tmp, zScore_e_tmp, iterID_tmp, opt.pValueThreshold,
+            &interested, opt.propPCtrunc, opt.gcControl, opt.nIterations,  opt.groupingPvalue_thresh, &ncpus);
     deleteStorage(resultNoDup);
     count =0;
     vector<uint> assignIdx (dupBearer.size() , 0);
@@ -106,6 +108,7 @@ void runDENTIST( uint nSamples,
     {
         if(i - thePos > dupBearer.size()) stop("[error] function runDENTIST"); 
         imputedZ[i]  = imputedZ_tmp[assignIdx[i - thePos]] * sign[i-thePos];
+        iterID[i]    =   iterID_tmp[assignIdx[i - thePos]] ;
         //rsq[i]       = rsq_tmp     [assignIdx[i - thePos]] ;
         uint j       = assignIdx[i - thePos];
         rsq[i]       =  rsq_tmp [j] ;

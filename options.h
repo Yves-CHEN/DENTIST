@@ -17,6 +17,7 @@ public:
     
 
     double pValueThreshold;
+    double groupingPvalue_thresh; // thresh to group SNPs by GWAS pvalue 
     double deltaMAF;
     string targetSNP   ;
     int64_t targetBP;
@@ -135,6 +136,10 @@ public:
         flags.push_back("--dup-threshold");
         pValueThreshold   = 5.0369e-8;    // percentage of probes to be filtered
         flags.push_back("--p-value-threshold");
+
+        groupingPvalue_thresh = 0.05;    // percentage of probes to be filtered
+        flags.push_back("--GWAS-pvalue-threshold");
+
         deltaMAF       =  -1;
         flags.push_back("--delta-MAF");
 
@@ -169,7 +174,7 @@ public:
         flags.push_back("--LD-unit-in-byte");
 
         gcControl = false;
-        flags.push_back("--control-inflation");
+        //flags.push_back("--control-inflation");
         propPCtrunc = 0.5;
         flags.push_back("--SVD-trunc-prop");
 
@@ -190,7 +195,7 @@ public:
         flags.push_back("--impute");
 
         ignoreWarnings = false;
-        flags.push_back("--ignore-warnings");
+        //flags.push_back("--ignore-warnings");
 
 
     }
@@ -380,6 +385,17 @@ void Options::parseOptions(int nArgs, char* option_str[])
                 exit (EXIT_FAILURE);
             }
         }
+
+        if(strcmp(option_str[i], "--GWAS-pvalue-threshold") == 0){
+            groupingPvalue_thresh = atof(option_str[++i]);
+            cout << option_str[i-1] << " " << groupingPvalue_thresh << endl;
+            if(groupingPvalue_thresh < 0 || groupingPvalue_thresh > 1) 
+            {
+                fprintf (stderr, "Error: --GWAS-pvalue-threshold should be between 0 and 1 that is [0 1].\n");
+                exit (EXIT_FAILURE);
+            }
+        }
+
 
 
 
