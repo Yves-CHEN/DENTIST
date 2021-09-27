@@ -156,7 +156,7 @@ public:
         radius   = 10e6;
         flags.push_back("--radius");
 
-        withNA = 0;
+        withNA = 1;
         flags.push_back("--with-NA-geno");
         maxDist = 2000000;           // 2Mb by default
         flags.push_back("--wind-dist");
@@ -175,7 +175,7 @@ public:
 
         gcControl = false;
         //flags.push_back("--control-inflation");
-        propPCtrunc = 0.5;
+        propPCtrunc = 0.4;
         flags.push_back("--SVD-trunc-prop");
 
    

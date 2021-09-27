@@ -619,10 +619,19 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
             uint arrSize = endIdx - startIdx;
             resize(LD,  arrSize);
             if(!readLD)
-                _LDFromBfile <LDType2>(&head, &nMarkers, &nSamples, 
+            {
+                try {
+                    _LDFromBfile <LDType2>(&head, &nMarkers, &nSamples, 
                        impOp.seqNos + startIdx, &arrSize, 
                        impOp.toAvert + startIdx, &cutoff,
                        &thread_num, LD, &nKept, &(withNA));
+                } 
+                catch (long long whichError) {
+                    cout << "[error] SNP [" << impOp.rsIDs[startIdx + whichError] << "] has variance of 0" << endl;
+                    exit(-1);
+                }
+            }
+
             else 
                 loadLDFromBLD<LDType2>(bfileName, impOp.seqNos, flipped, startIdx, endIdx, LD);
             

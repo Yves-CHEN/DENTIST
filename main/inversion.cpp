@@ -23,7 +23,6 @@ T getQuantile2(const std::vector<T>& dat, std::vector<uint> grouping, double whi
 {
 
     int sum = std::accumulate(grouping.begin(), grouping.end(), 0);
-    cout << "sum: " << sum << endl;
 
     if(sum <50)
     {

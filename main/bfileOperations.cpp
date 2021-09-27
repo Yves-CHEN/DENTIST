@@ -142,7 +142,6 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int6
     std::vector<double>  E_sq (sizeOfMarkIdx);
     std::vector<double>  VAR(sizeOfMarkIdx);
 
-#pragma omp parallel for
    for (int64 i = 0; i < sizeOfMarkIdx; i ++)
    {
 
@@ -156,12 +155,16 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int6
           nMissing += countOnes[(dataType)(~marker)];
           sum_i    += countOnes[GENO_i [k] & marker];
           sum11_i  += mapper2[(dataType)(GENO_i [k] & marker)];
-
       }
       nMissing = nMissing /2;
       E     [i] = double(sum_i  ) / (nKeptSample - nMissing);
       E_sq  [i] = double(sum_i   + sum11_i*2 )/ (nKeptSample -nMissing);
       VAR   [i] =  E_sq[i] - E[i] * E[i] ;
+      if(VAR[i] == 0)
+      {
+          throw(i) ;
+          return -1;
+      }
    }
 
 
@@ -234,10 +237,12 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int6
                 LD = cov_XY / sqrt ( (var_i * var_j) ) * sign;
             else
             {
-                printf("[error] LD was set to 0, because var_i = %f, var_j  %f nMissing = %d E_i_sq (%f) - E_i * E_i\n", var_i, var_j, nMissing, E_i_sq);
-                printf( "[error] , when parse the markerIdx %lld-%lld.\n", theMarkIdx[i],  theMarkIdx[j]);
+                printf("[error] LD was set to 0, because var_[%lld] = %f, var_[%lld]  %f  E_i_sq (%f) - E_i * E_i\n",
+                        i, VAR[i], j, VAR[j],  E_sq[i]);
+                printf("[error] , when parse the markerIdx %lld-%lld.\n", theMarkIdx[i],  theMarkIdx[j]);
                 printf("[error] %lld - %lld \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
                 exit(-1);
+
             }
 
             if(i ==0 && j == 1)
@@ -647,7 +652,6 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
 
 
     dataType** GENO = new dataType* [sizeOfMarkIdx] ;
-#pragma omp parallel for
     for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
     {
         GENO[i] = (dataType*) (perMakerSizeOrig * (theMarkIdx[i] - theMarkIdx[0]) + bufferAllMarkers);
@@ -658,21 +662,24 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
     std::vector<double>  E_sq (sizeOfMarkIdx);
     std::vector<double>  sum11 (sizeOfMarkIdx);
     std::vector<double>  VAR(sizeOfMarkIdx);
-#pragma omp parallel for
-   for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
-   {
-      double sum_i     = 0;
-      double sum11_i   = 0;
-      for (unsigned long long k =0; k < perMakerSize; k ++) {
-          sum_i    += countOnes[GENO[i][k]];
-          sum11_i  += mapper2[(dataType)(GENO[i][k])];
-
-      }
-      sum11 [i] = sum11_i;
-      E     [i] = double(sum_i  ) / (nKeptSample);
-      E_sq  [i] = double(sum_i   + sum11_i*2 )/ (nKeptSample);
-      VAR   [i] =  E_sq[i] - E[i] * E[i] ;
-   }
+    for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
+    {
+       double sum_i     = 0;
+       double sum11_i   = 0;
+       for (unsigned long long k =0; k < perMakerSize; k ++) {
+           sum_i    += countOnes[GENO[i][k]];
+           sum11_i  += mapper2[(dataType)(GENO[i][k])];
+       }
+       sum11 [i] = sum11_i;
+       E     [i] = double(sum_i  ) / (nKeptSample);
+       E_sq  [i] = double(sum_i   + sum11_i*2 )/ (nKeptSample);
+       VAR   [i] =  E_sq[i] - E[i] * E[i] ;
+       if(VAR[i] == 0)
+       {
+           throw(i) ;
+           return -1;
+       }
+    }
 
 #pragma omp parallel for
      for (unsigned long long i = 0; i < sizeOfMarkIdx; i ++)
@@ -700,13 +707,12 @@ int calcLDFromBfile_quicker_nomissing (std::string bedFile, int64 nSample, int64
                  LD = cov_XY / sqrt ( (VAR[i] * VAR[j]) ) * sign;
              else
              {
-                 
-                 printf("[error] LD was set to 0, because var_[%lld] = %f, var_[%lld]  %f  E_i_sq (%f) - E_i * E_i\n", i, VAR[i], j, VAR[j],  E_sq[i]);
-                 printf( "[error] , when parse the markerIdx %lld-%lld.\n", theMarkIdx[i],  theMarkIdx[j]);
+                 printf("[error] LD was set to 0, because var_[%lld] = %f, var_[%lld]  %f  E_i_sq (%f) - E_i * E_i\n",
+                         i, VAR[i], j, VAR[j],  E_sq[i]);
+                 printf("[error] , when parse the markerIdx %lld-%lld.\n", theMarkIdx[i],  theMarkIdx[j]);
                  printf("[error] %lld - %lld \n", theMarkIdx[sizeOfMarkIdx-1] , theMarkIdx[0] );
                  exit(-1);
              }
-
              saveData<T> (LD, i, j, result, sizeOfMarkIdx);
          }
      }
