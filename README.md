@@ -11,7 +11,7 @@ The method is developed by Wenhan Chen, Zhihong Zhu and [Jian Yang](https://publ
 If you meet any bugs or questions, please send an email to [Wenhan Chen](mailto:uqwche11@uq.edu.au) or [Jian Yang](mailto:jian.yang.qt@gmail.com).
 
 # Citations
-Chen, W., Wu, Y., Zheng, Z., Qi, T., Visscher, P. M., Zhu, Z., & Yang, J. (2020). Improved analyses of GWAS summary statistics by reducing data heterogeneity and errors. bioRxiv.
+Chen, W., Wu, Y., Zheng, Z. et al. Improved analyses of GWAS summary statistics by reducing data heterogeneity and errors. Nat Commun 12, 7117 (2021). https://doi.org/10.1038/s41467-021-27438-7
 
 
 # Install
@@ -88,7 +88,7 @@ The DENTIST.ignored.txt contains variants that are ignored through QC for reason
 |--------------------|------------|
 | |**INPUT and OUTPUT files**  |
 |-\-gwas-summary \<STR\>&nbsp;|Reads GWAS summary data in in GCTA-COJO format, e.g.  <br> `SNP A1 A2 freq beta se p N` <br> `rs131538 A G 0.05 0.007 0.02 0.7 6000` <br>`rs140378 C G 0.05 0.007 0.02 0.7 6000` |
-|-\-bfile \<STR\>  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;|Reads individual-level genotype data in PLINK bed format, e.g. test.fam, test.bim and test.bed|
+|-\-bfile \<STR\>  |Reads individual-level genotype data in PLINK bed format, e.g. test.fam, test.bim and test.bed|
 |-\-out \<STR\>|Specifies the prefix of the output files. |
 |  |**Select/filter a chromsome/region/given SNPs**  |
 |-\-chrID     \<STR\>| Specifies the chromosome ID. If not provided, DENTIST will guess the chromosome ID based on if there is only one chromosome ID provided in the inputs; otherwise an error is reported.|
