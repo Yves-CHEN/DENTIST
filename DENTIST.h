@@ -451,6 +451,7 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
         while ( notLastInterval );
     }
 
+    if (startList.size()<=0) stop ( "[error] No. of interval is 0\n");
     fillStartList [0] = startList[0];
     fillEndList [fillEndList.size()-1] = endList[endList.size() -1];
     for (size_t i = 0; i < startList.size(); i ++)
@@ -662,8 +663,8 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
     //delete[] LD; 
     deleteStorage<LDType2>(LD);
 
-    ofstream qout (qcFile+".DENTIST.txt");
-    ofstream outLierout (qcFile+".DENTIST.outliers.txt");
+    ofstream qout (qcFile+".DENTIST.full.txt");
+    ofstream outLierout (qcFile+".DENTIST.short.txt");
     if(doDebug)
     {
         double lambda  = 1;
@@ -841,7 +842,7 @@ void alignGWAS (GWAS& gtab, BedFile& btab,  vector<double>& zScore, vector<uint>
     //for (long int j =0 ; j < btab.rs.size(); j ++)
     int sum = 0;
     auto include_tmp = btab.include;
-    ofstream exclOut (outFilePrefix + ".DENTIST.excluded.txt"); 
+    ofstream exclOut (outFilePrefix + ".DENTIST.ignored.txt"); 
 
     vector<string> msg;
     msg.push_back("notFoundInGWAS");

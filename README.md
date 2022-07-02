@@ -2,6 +2,8 @@
 # Overview
 DENTIST (Detecting Errors iN analyses of summary staTISTics) is a quality control (QC) tool for summary-level data from genome-wide association studies (GWASs). It leverages the difference between the observed GWAS test-statistic of a variant and its predicted value (using the neighbouring variants and linkage equilibrium (LD) data from a reference panel) to remove problematic variants. It can detect genotyping/imputation errors in either the original GWAS or the LD reference samples, allelic errors (i.e., the effect alleles of the variants are mislabelled) in the GWAS summary data, as well as heterogeneity between the GWAS and LD reference samples. As shown in [our paper](#Citations), DENTIST can significantly improve the performance of the summary-data based conditional and jointly association analysis (COJO; Yang et al. 2012 Nat Genet) especially for rare variants. It can also improve the performance of LD score regression (LDSC; Builk-Sulivant et al. 2015 Nat Genet) and SMR-HEIDI (Zhu et al. 2015 Nat Genet). We believe that DENTIST can in principle work for all analyses that use GWAS summary data, although this has not been tested extensively. Apart from its application to summary data based analyses, DENTIST can also  be used in complementary to the conventional QCs in GWAS with individual-level data.
 
+Software License: GPLv3 
+
 # Credits
 The method is developed by Wenhan Chen, Zhihong Zhu and [Jian Yang](https://publons.com/researcher/2848531/jian-yang/) in the Yang Lab at The University of Queensland. The software is programmed and maintained by Wenhan Chen.
 
@@ -59,8 +61,9 @@ rs140378 C G 0.05 0.007 0.02 0.7 6000
 ...
 ```
 > \-\-out \<the output file prefix\>
+Specifies the prefix of the output files including  \*.DENISTI.full.txt, \*.DENISTI.short.txt and \*.DENISTI.ignored.txt.
+The .DENTIST.full.txt contains the statistics for all the tested variants in the following format.
 
-Specifies the prefix of the output file. The output of DENTIST is in the following format.
 ```
 rsID        chisq   -log10(P)  ifDup
 rs131538    0.012   0.91       0
@@ -68,6 +71,16 @@ rs140378    14.4    2          0
 ...
 ```
 For each variant, the first column shows the rsID, followed by the DENTIST test statistic (follows a <img src="https://render.githubusercontent.com/render/math?math=\chi^2"> distribution with 1 degree of freedom under the null), and the corresponding <img src="https://render.githubusercontent.com/render/math?math=-log_{10}(p-value)">. The last column is an indicator of whether the variant is in strong LD (|r| > 0.99) with any other variants, 0 for none and 1 for at least one.
+
+The DENTIST.short.txt contains the rsIDs for variants that cannot pass DENTIST QC and are suggested for removal.
+
+The DENTIST.ignored.txt contains variants that are ignored through QC for reasons including 1) inconsistently found in summmary-data and PLINK files; 2) MAF threshold; 3) MAF difference threshold between MAFs from summary and reference data; 4) alleles do not match between summary and reference data.
+
+
+# Cautions
+* Do not perform cutoff on GWAS p-value.
+* Make sure HWE QC is performed before running DENTIST.
+* DENTIST will skip over low SNP density regions, any 2Mb-region with < 1000 SNPs.
 
 
 # Parameters
@@ -91,7 +104,7 @@ For each variant, the first column shows the rsID, followed by the DENTIST test 
 |-\-iteration-num \<INT\>|Specifies the number of iterations in the DENTIST analysis. A too large value will increase the computational costs and a too small value will increase the false discovery rate. We have experimented with this parameter and set a default value of 10 for a good trade-off.|
 |-\-dup-threshold     \<FLOAT\>|    Specifies the correlation threshold for variants considered as duplicates for each other. The default value is 0.99, which corresponds to Pearson’s correlation (r2) of 0.99^2|
 |-\-p-value-threshold \<FLOAT\>| Specifies the GWAS P-value threshold to group variants into null variant and significant variants. The default value is 0.01.|
-|-\-with-NA-geno             | Specifies that there are NA genotypes in the input PLINK BED file. |
+|-\-no-missing-genotype             | Specifies that there are no NA genotypes in the input PLINK BED file. DENTIST can perform slightly faster for these genotype data. |
 |-\-SVD-trunc-prop    \<FLOAT\>|    Specifies the degree SVD trunction preformed in DENTIST. It is a value between 0 and 1 specifying the proportion of components being retained from SVD truncation. The default value is 0.5. |
 ||**SPEED**|
 |-\-thread-num \<INT\>|  Specifies the number of threads for parallel computing using OpenMP. The default value is 1.|
@@ -104,4 +117,5 @@ For each variant, the first column shows the rsID, followed by the DENTIST test 
 |-\-check-LD | is yet to be implemented.  |
 |-\-freq     | is yet to be implemented.  |
 |-\-impute   | is yet to be implemented.  |
+
 

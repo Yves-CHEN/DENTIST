@@ -157,7 +157,7 @@ public:
         flags.push_back("--radius");
 
         withNA = 1;
-        flags.push_back("--with-NA-geno");
+        flags.push_back("--no-missing-genotype");
         maxDist = 2000000;           // 2Mb by default
         flags.push_back("--wind-dist");
         minDim        = 2000;   // default min window size for imputation
@@ -232,8 +232,7 @@ void Options::FLAGS_VALID_CK(int option_num, char* option_str[])
         if(has_prefix(option_str[i],"--"))
             if(not_in_flags(flags, option_str[i]))
             {
-                //fprintf (stderr, "%s: Invalid option\n", option_str[i]);
-                exit (EXIT_FAILURE);
+                printf("[error] Unrecognized flag: %s", option_str[i] ); stop("\n");
             }
     }
 
@@ -277,11 +276,6 @@ void Options::parseOptions(int nArgs, char* option_str[])
             }
             cout << option_str[i-1] << " " <<  bytePerUnit << endl;
         }
-
-
-
-
-
 
 
         if(strcmp(option_str[i], "--bld") == 0)
@@ -471,12 +465,12 @@ void Options::parseOptions(int nArgs, char* option_str[])
             }
             cout<< option_str[i] << " " <<  " TRUE" <<endl;
         }
-        if(strcmp(option_str[i], "--with-NA-geno") == 0)
+        if(strcmp(option_str[i], "--no-missing-genotype") == 0)
         {
-            withNA  = 1;
+            withNA  = 0;
             if(i+1 < nArgs)
             {
-                Options::bool_FLAG_VALID_CK(string("--with-NA-geno"), option_str[i+1]);
+                Options::bool_FLAG_VALID_CK(string("--no-missing-genotype"), option_str[i+1]);
             }
             cout<< option_str[i] << " " <<  " TRUE" <<endl;
         }

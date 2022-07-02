@@ -335,7 +335,7 @@ void oneIteration (T* LDmat, uint* matSize, double* zScore, std::vector<uint>& i
         if ( es.eigenvalues()(j) < 0.0001) nZeros ++;
     nRank = nRank - nZeros;
     if(K>nRank) K = nRank ;
-
+    if (K<=1) { printf("[error] Rank of eigen matrix <=1\n"); exit(-1); }
     Eigen::MatrixXd  ui = Eigen::MatrixXd::Identity(es.eigenvectors().rows(), K);
     Eigen::MatrixXd  wi = Eigen::MatrixXd::Identity(K, K);
 
