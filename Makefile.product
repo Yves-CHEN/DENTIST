@@ -29,6 +29,7 @@ main = main
 CXXFLAGS = -w -O3 -fopenmp  -DEIGEN_NO_DEBUG 
 
 LIB =  -lz -Wl,-lm -ldl  -lgomp -lpthread
+#DEBUG_DENTIST
 
 
 

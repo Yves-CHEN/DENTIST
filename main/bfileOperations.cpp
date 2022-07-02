@@ -109,7 +109,7 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int6
     // ******************************************************
     unsigned long long loadSize = perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
     uchar* bufferAllMarkers = new uchar [loadSize ];
-    printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
+    D(printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6)););
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     readSize = fread (bufferAllMarkers, 1, loadSize, bedFileReader);
     dataType* bufferMaker = NULL;  // This is pointer to the memory of a particular marker.
@@ -245,9 +245,6 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int6
 
             }
 
-            if(i ==0 && j == 1)
-                std::cout << sum_XY/(nKeptSample)  << " " << cov_XY << " " << LD << std::endl;
-
             saveData<T>(LD, i, j, result, sizeOfMarkIdx);
 
            }
@@ -329,8 +326,14 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
     size_t readSize = fread (&headerBuf,1, nByteHeader, bedFileReader);
-    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
-    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {
+        D(printf("[info]This bed file is plink 1.9 bedfile format.  \n"););
+        formatVersion="1.9"; nThrowAway = nByteHeader;
+    };
+    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {
+        D(printf("[info]This bed file is plink 1.0 bedfile format. \n"););
+        formatVersion="1.0"; nThrowAway = nByteHeader_older;
+    };
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
     {
         printf("[error] The size of bedFile %ld is inconsistenty with the estimated %u basd on %u samples and %d markers. \n", lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);
@@ -375,7 +378,7 @@ int calcLDFromBfile       (std::string bedFile, int64 nSample, int64 nMarker, ui
     unsigned long long loadSize = perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[sizeOfMarkIdx-1] - theMarkIdx[0] +1) ;
     uchar* bufferAllMarkers = new uchar [loadSize ];
 
-    printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6));
+    D(printf("[info] Buffer size is %d Mb. \n", int(loadSize/1e6)););
     
     fseek (bedFileReader , perMakerSizeOrig * sizeof(uchar) * (theMarkIdx[0]) + nThrowAway, SEEK_SET );
     readSize = fread (bufferAllMarkers, 1, loadSize, bedFileReader);

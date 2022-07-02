@@ -27,11 +27,12 @@ and address the dependencies yourself on MKL, BOOST and EIGEN Libraries.
 # Downloads
 ### Pre-compiled Executable Files
 The executable file below is compiled with "-static" and tested on 64-bit Linux distributions on the x86_64 CPU platform,
+[DENTIST_1.2.0.0](https://www.dropbox.com/s/cq5mmfonocvdiwh/DENTIST.1.2.0.0.gz?dl=0)
 [DENTIST_1.1.0.0](https://www.dropbox.com/s/1mtskir8qzqsmee/DENTIST.1.1.0.0.gz?dl=0)
 [DENTIST  0.9.2.1](https://www.dropbox.com/s/37bc35azxwbzdos/DENTIST.0.9.2.1.gz?dl=0).
 
 To download, you can run
-> wget -O DENTIST_1.1.0.0.gz https://www.dropbox.com/s/1mtskir8qzqsmee/DENTIST.1.1.0.0.gz?dl=0
+> wget -O DENTIST_1.2.0.0.gz https://www.dropbox.com/s/cq5mmfonocvdiwh/DENTIST.1.2.0.0.gz?dl=0
 
 
 # Basic usage
