@@ -61,7 +61,7 @@ rs140378 C G 0.05 0.007 0.02 0.7 6000
 ...
 ```
 > \-\-out \<the output file prefix\>
-Specifies the prefix of the output files including  \*.DENISTI.full.txt, \*.DENISTI.short.txt and \*.DENISTI.ignored.txt.
+Specifies the prefix of the output files including  \*.DENTIST.full.txt, \*.DENTIST.short.txt and \*.DENTIST.ignored.txt.
 The .DENTIST.full.txt contains the statistics for all the tested variants in the following format.
 
 ```
@@ -89,7 +89,7 @@ The DENTIST.ignored.txt contains variants that are ignored through QC for reason
 | |**INPUT and OUTPUT files**  |
 |-\-gwas-summary \<STR\>&nbsp;|Reads GWAS summary data in in GCTA-COJO format, e.g.  <br> `SNP A1 A2 freq beta se p N` <br> `rs131538 A G 0.05 0.007 0.02 0.7 6000` <br>`rs140378 C G 0.05 0.007 0.02 0.7 6000` |
 |-\-bfile \<STR\>  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;|Reads individual-level genotype data in PLINK bed format, e.g. test.fam, test.bim and test.bed|
-|-\-out \<STR\>|Specifies the prefix of the output file. The output of DENTIST is in the following format, <br>`rsID        chisq   -log10(P)  ifDup` <br> `rs131538    0.012   0.91       0` <br> `rs140378    14.4    2          0` <br> `...` |
+|-\-out \<STR\>|Specifies the prefix of the output files. |
 |  |**Select/filter a chromsome/region/given SNPs**  |
 |-\-chrID     \<STR\>| Specifies the chromosome ID. If not provided, DENTIST will guess the chromosome ID based on if there is only one chromosome ID provided in the inputs; otherwise an error is reported.|
 |-\-target    \<STR\>|  Specifies a region of 20 Mb centred at a position specified by rsID. The rsID should be present in the PLINK bim file. A warning will be reported if the target rsID is not found, and DENTIST will run across the chromosome rather than the specified region.|
