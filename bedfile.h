@@ -217,10 +217,12 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     //                     Variables
     // **************************************************************
     typedef unsigned char dataType;
+
     uint processSamplePerRound = sizeof(dataType)*8 /2;
     //uint perMakerSize = ceil ( (nSample) / 1.0 / processSamplePerRound );
     int64 perMakerSizeOrig = ceil ( (nSample) / 1.0 / 4);
-    int64 perMakerSize = ceil( (nSample) / 1.0 / processSamplePerRound );
+    //int64 perMakerSize = ceil( (nSample) / 1.0 / processSamplePerRound );
+    int64 perMakerSize = perMakerSizeOrig;
     uint nBlanks   = ( processSamplePerRound - (nSample) %
                 processSamplePerRound  ) % processSamplePerRound; //
     int64 lSize =0;
@@ -324,6 +326,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
         readLen.push_back(sizeOfMarkIdx);
     }
 
+    assert(nBlanks == 0);
     vector<double>   maf (nMarker, -1);
     for (size_t block_i =0; block_i < readLen.size(); block_i ++)
     {
@@ -339,6 +342,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
         for (size_t i = 0; i < readLen[block_i]; i ++) {
             GENO[i] = (dataType*) (perMakerSizeOrig * i + bufferAllMarkers);
         }
+        
 #pragma omp parallel for
         for (size_t i = 0; i < readLen[block_i] ; i ++)
         {
@@ -347,19 +351,22 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
             double    E_i = 0;
             dataType  marker = 0  ;
             double    sum_i = 0;
-
             for (unsigned int k =0; k < perMakerSize; k ++)
             {
-                marker    = markMissing[ GENO_i[k]  ]  & markMissing[GENO_i[k]]   ;
-                nMissing += countOnes[(dataType)(~marker)];
+                marker    = markMissing[ GENO_i[k]  ]    ;
+                nMissing += countOnes[(dataType)(~marker)]/2;
                 sum_i    += countOnes[GENO_i [k] & marker];
             }
-            E_i         = double(sum_i  ) / (nKeptSample - nMissing - nBlanks);
-            maf[startingIdx[block_i] + i] = 1-  E_i / 2;
+            // sum of alternative alleles / (2*sample size)
+            maf[startingIdx[block_i] + i]  = (double(sum_i  ) / 2 ) / (nKeptSample - nMissing ); 
         }
         delete [] bufferAllMarkers;
         delete [] GENO;
     }
+    ofstream fout (bfileName + ".DENTIST.maf.txt");
+    for (size_t i = 0; i < maf.size(); i ++)
+        fout <<  maf[i] << endl;
+    fout.close();
     return maf;
 
 };
