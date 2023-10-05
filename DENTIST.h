@@ -417,9 +417,20 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
     }
     allGaps.push_back(diff.size());
 
+
+    if (allGaps.size()-2>0)
+    {
+        cout << "No. of gaps found: " << allGaps.size()-2 << endl;
+        for(size_t i = 1; i < allGaps.size()-1; i ++)
+        {
+            cout << "Gap (devoid of SNPs) " << i << ": " << bp[ allGaps[i] -1] << " - " << bp[ allGaps[i]  ] << endl;
+        }
+    }
+
     int times = 0;
     for (size_t k = 0; k < allGaps.size() -1; k ++)
     {
+        int firstSegIdx = startList.size();
         auto rangeSize = allGaps[k+1];
         if(rangeSize < minBlockSize /2) continue;
         if(rangeSize  - minDim < 0) continue;
@@ -449,13 +460,23 @@ void segmentingByDist(vector<uint>& bp, vector<uint>& startList, vector<uint>& e
             //endIdx   =  rangeSize -  minDim > endIdx ? endIdx: rangeSize;  // This is for the last region.
         }
         while ( notLastInterval );
+
+        // reset the output of the first and last segement.
+        if(startList.size() <= firstSegIdx) stop("startList.size() <= firstSegIdx");
+        fillStartList [firstSegIdx] = startList[firstSegIdx];
+        fillEndList [fillEndList.size()-1] = endList[endList.size() -1];
     }
 
     if (startList.size()<=0) stop ( "[error] No. of interval is 0\n");
-    fillStartList [0] = startList[0];
-    fillEndList [fillEndList.size()-1] = endList[endList.size() -1];
+    
+    cout << "Perform DENTIST on following intervals (from i-th SNP to j-th SNP): " << endl;
     for (size_t i = 0; i < startList.size(); i ++)
-        cout << startList[i] << "-" << endList[i] << ", " << bp[endList[i]-1] - bp[startList[i]] << ", " << allGaps[0] <<std::endl;
+    {
+        if(i % 4 == 0) cout << endl;
+        cout << startList[i] << "-" << endList[i]  << ",\t"  ;
+    }
+    cout <<endl;
+        //cout << startList[i] << "-" << endList[i] << ", " << bp[endList[i]-1] - bp[startList[i]] << ", " << allGaps[0] <<std::endl;
 
 }
 
@@ -608,7 +629,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
             continue;
         }
         cout <<   startIdx << "th" << " - "<< endIdx << "th" << endl;
-        printf("..%.1f%%", k*100.0 / startList.size());
+        printf("..%.1f%%\n", k*100.0 / startList.size());
         if(!opt.loadLD )
             nKept = moveKeepProtect<LDType2>( LD, preDim, endIdx - startIdx,
                     startIdx - pre_start); // reUse LD part
@@ -663,7 +684,7 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
     //delete[] LD; 
     deleteStorage<LDType2>(LD);
 
-    ofstream qout (qcFile+".DENTIST.full.txt");
+    ofstream       qout (qcFile+".DENTIST.full.txt");
     ofstream outLierout (qcFile+".DENTIST.short.txt");
     if(doDebug)
     {
@@ -683,6 +704,10 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
         for (size_t i =0; i < zScores.size(); i ++ )
         {
             double stat = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
+
+            // the imputed value == 0 meaning that the imputation is not performed.
+            if ( (impOp.imputed[i] == 0) && (impOp.rsq[i] == 0) )
+                continue;
             qout << impOp.rsIDs[i] << "\t" << impOp.zScores[i] << "\t" 
                 << impOp.imputed[i] << "\t" 
                 << impOp.rsq[i] << "\t" << impOp.ifDup[i] <<"\t" << stat/lambda << endl;
@@ -712,6 +737,9 @@ void segmentedQCed_dist (string bfileName, string qcFile, uint nSamples,
         for (size_t i =0; i < zScores.size(); i ++ )
         {
             double stat = pow(impOp.zScores[i]-impOp.imputed[i], 2) /(1-impOp.rsq[i]);
+            // the imputed value == 0 meaning that the imputation is not performed.
+            if ( (impOp.imputed[i] == 0) && (impOp.rsq[i] == 0) )
+                continue;
             qout << impOp.rsIDs[i] << "\t" << stat /lambda << "\t" 
                 <<  minusLogPvalueChisq(stat/lambda) << "\t" << impOp.ifDup[i] << endl;
             if( minusLogPvalueChisq(stat/lambda) > -log10(5e-8))
@@ -1065,11 +1093,14 @@ void getFreq(const Options& opt)
         printf("[info] %d SNPs remained after --extract", updatedInclude.size());
     }
 
-
-
     ofstream mafOut ( opt.outPrefix + ".frq");
+
+    mafOut << "chr" << "\t"<< "RS_ID" << "\t" << "BP" << "\t" << "A1 "<< "\t" << "A2"  << "\t" << "Freq_A1"<<"\t" << "n" << "\t" << "nMissingGeno"<< endl;
     for (size_t i = 0; i <ref.include.size(); i ++)
-        mafOut << ref.maf[ref.include[i]] << endl;
+        mafOut << ref.chrID[ref.include[i]] << "\t" << ref.rs[ref.include[i]] << "\t" << ref.bp[ref.include[i]] <<
+             "\t" << ref.A1[ref.include[i]] << "\t" << ref.A2[ref.include[i]]  <<
+             "\t" << std::setprecision(4) <<1-ref.maf[ref.include[i]]   << "\t" << ref.N <<
+             "\t" << ref.nMissing [ref.include[i]] << endl;
     mafOut.close();
 
 }

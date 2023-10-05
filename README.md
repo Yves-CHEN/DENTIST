@@ -27,11 +27,13 @@ and address the dependencies yourself on MKL, BOOST and EIGEN Libraries.
 # Downloads
 ### Pre-compiled Executable Files
 The executable file below is compiled with "-static" and tested on 64-bit Linux distributions on the x86_64 CPU platform,
+[DENTIST_1.3.0.0](https://www.dropbox.com/scl/fi/1yna9rizfy6s0ixek0cca/DENTIST.1.3.0.0.gz?rlkey=0ak0cdsev152jteibceit4mje&dl=0)
 [DENTIST_1.2.0.0](https://www.dropbox.com/s/cq5mmfonocvdiwh/DENTIST.1.2.0.0.gz?dl=0)
 [DENTIST_1.1.0.0](https://www.dropbox.com/s/1mtskir8qzqsmee/DENTIST.1.1.0.0.gz?dl=0)
 [DENTIST  0.9.2.1](https://www.dropbox.com/s/37bc35azxwbzdos/DENTIST.0.9.2.1.gz?dl=0).
 
 To download, you can run
+> wget -O DENTIST_1.3.0.0.gz https://www.dropbox.com/scl/fi/1yna9rizfy6s0ixek0cca/DENTIST.1.3.0.0.gz?rlkey=0ak0cdsev152jteibceit4mje&dl=0
 > wget -O DENTIST_1.2.0.0.gz https://www.dropbox.com/s/cq5mmfonocvdiwh/DENTIST.1.2.0.0.gz?dl=0
 
 
@@ -44,6 +46,9 @@ To specify the number of CPUs,
 
 To run DENTIST at a targeted region specified by the rsID of variant (e.g. rs1234),
 >DENTIST --gwas-summary summary_data --bfile ref --out prefix --thread-num 10 --target rs1234
+
+To run DENTIST for allelic frequencies
+DENTIST --gwas-summary summary_data --bfile ref --out <prefix>   --freq
 
 
 # Input and output
@@ -62,8 +67,10 @@ rs140378 C G 0.05 0.007 0.02 0.7 6000
 ...
 ```
 > \-\-out \<the output file prefix\>
-Specifies the prefix of the output files including  \*.DENTIST.full.txt, \*.DENTIST.short.txt and \*.DENTIST.ignored.txt.
-The .DENTIST.full.txt contains the statistics for all the tested variants in the following format.
+Specifies the prefix of the output files including  \*.DENTIST.full.txt, \*.DENTIST.short.txt, \*.DENTIST.ignored.txt \*.frq.
+
+The .DENTIST.full.txt contains the statistics for all the tested variants in the following format, e.g. 
+> head -3 <prefix>.DENTIST.full.txt
 
 ```
 rsID        chisq   -log10(P)  ifDup
@@ -71,11 +78,30 @@ rs131538    0.012   0.91       0
 rs140378    14.4    2          0
 ...
 ```
-For each variant, the first column shows the rsID, followed by the DENTIST test statistic (follows a <img src="https://render.githubusercontent.com/render/math?math=\chi^2"> distribution with 1 degree of freedom under the null), and the corresponding <img src="https://render.githubusercontent.com/render/math?math=-log_{10}(p-value)">. The last column is an indicator of whether the variant is in strong LD (|r| > 0.99) with any other variants, 0 for none and 1 for at least one.
+As shown above, the first column contains the rsID for each variant, followed by the DENTIST test statistic (follows a <img src="https://render.githubusercontent.com/render/math?math=\chi^2"> distribution with 1 degree of freedom under the null), and the corresponding <img src="https://render.githubusercontent.com/render/math?math=-log_{10}(p-value)"> in the 3rd column. The 4th column is an indicator of whether the variant is in strong LD (|r| > 0.99) with any other variants, 0 for none and 1 for at least one.
 
 The DENTIST.short.txt contains the rsIDs for variants that cannot pass DENTIST QC and are suggested for removal.
 
-The DENTIST.ignored.txt contains variants that are ignored through QC for reasons including 1) inconsistently found in summmary-data and PLINK files; 2) MAF threshold; 3) MAF difference threshold between MAFs from summary and reference data; 4) alleles do not match between summary and reference data.
+The DENTIST.ignored.txt contains variants that are ignored through QC for reasons including 1) inconsistently found in summmary-data and PLINK files; 2) MAF threshold; 3) MAF difference threshold between MAFs from summary and reference data; 4) alleles do not match between summary and reference data. e.g.
+head -3 <prefix>.DENTIST.ignored.txt
+```
+rs141578542     notFoundInGWAS
+chr22:16051722:D        notFoundInGWAS
+rs139918843     notFoundInGWAS
+```
+
+The <prefix>.frq shows the allelic frequencies of the A1 allele specific by --freq flag, e.g. 
+
+```
+chr     RS_ID   BP      A1      A2      Freq_A1 n       nMissingGeno
+1       1       1       2       1       0.04879 7703    693
+1       2       2       2       1       0.05588 7703    742
+1       3       3       2       1       0.04507 7703    758
+```
+In example above, the Freq_A1 is the allelic frequency,  n is for the sample size of the cohort,  nMissingGeno is for the number of individuals which has NA genotype and excluded for the calculation.
+
+
+
 
 
 # Cautions
@@ -111,12 +137,12 @@ The DENTIST.ignored.txt contains variants that are ignored through QC for reason
 |-\-thread-num \<INT\>|  Specifies the number of threads for parallel computing using OpenMP. The default value is 1.|
 ||**Others**|
 | -\-debug             | turns on verbose output for debugging. |
+|-\-freq     | is a flag for generating the allelic frequencies instead of running DENTIST QC. Note that the -\-bfile and -\-gwas-summary are still needed in this mode.|
 |-\-write-LD                  | is yet to be implemented. |
 |-\-LD-unit-in-byte \<INT\>     | is yet to be implemented. |
 |-\-load-LD                   | is yet to be implemented. |
 |-\-bld \<STR\>               | is yet to be implemented.|
 |-\-check-LD | is yet to be implemented.  |
-|-\-freq     | is yet to be implemented.  |
 |-\-impute   | is yet to be implemented.  |
 
 

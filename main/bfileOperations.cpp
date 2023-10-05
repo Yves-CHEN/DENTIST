@@ -66,8 +66,8 @@ int calcLDFromBfile_gcta(std::string bedFile, int64 nSample, int64 nMarker, int6
     /// bedfile, in which case, the estimated bed file size would be inconsistent with the
     /// acutal size.
     size_t readSize = fread (&headerBuf,1, nByteHeader, bedFileReader);
-    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n"); formatVersion="1.9"; nThrowAway = nByteHeader;};
-    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n"); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader)) {D(printf("[info]This bed file is plink 1.9 bedfile format. (Newer) \n")); formatVersion="1.9"; nThrowAway = nByteHeader;};
+    if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) {D(printf("[info]This bed file is plink 1.0 bedfile format. (Older)\n")); formatVersion="1.0"; nThrowAway = nByteHeader_older;};
     if(lSize  != long(perMakerSizeOrig * nMarker + nThrowAway) )
     {
         printf("[error] The size of bedFile %lld is inconsistenty with the estimated %lld basd on %lld samples and %lld markers. \n", lSize, perMakerSizeOrig * nMarker + nThrowAway, perMakerSizeOrig, nMarker);

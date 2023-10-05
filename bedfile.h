@@ -24,6 +24,7 @@ public:
     vector<int>    bp;
     vector<uint>   include;
     vector<double> maf;
+    vector<int> nMissing;
     vector<double> geneticDist;
     bool           moganMissing;
     string         bfileStr = "";
@@ -235,8 +236,6 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     std::string formatVersion = "";
     int nThrowAway = 0;
     uchar  headerBuf[nByteHeader ] ;
-    //uint nKeptSample = nSample;
-    uint nKeptSample = perMakerSize * processSamplePerRound;
     std::vector<double>   GENO_VAR (sizeOfMarkIdx, -1 );
     std::vector<double>   GENO_Ex  (sizeOfMarkIdx, -1 );
     std::vector<double>   GENO_sum11  (sizeOfMarkIdx, -1 ); // sum of sample with genotype 11
@@ -258,10 +257,10 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
     fread (&headerBuf,1, nByteHeader, bedFileReader);
 
     if(!memcmp(headerCoding, headerBuf, nByteHeader)) 
-        {printf("[info] This bed file is plink 1.9 bedfile format. (Newer) \n"); 
+        { D(printf("[info] This bed file is plink 1.9 bedfile format. (Newer) \n")); 
         formatVersion="1.9"; nThrowAway = nByteHeader;};
     if(!memcmp(headerCoding, headerBuf, nByteHeader_older)) 
-        {printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n");
+        {D(printf("[info] This bed file is plink 1.0 bedfile format. (Older)\n"));
          formatVersion="1.0"; nThrowAway = nByteHeader_older;};
 
     if(lSize  != int64(perMakerSizeOrig) * nMarker + nThrowAway )
@@ -326,8 +325,8 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
         readLen.push_back(sizeOfMarkIdx);
     }
 
-    assert(nBlanks == 0);
     vector<double>   maf (nMarker, -1);
+    vector<int>   nMissing_vec (nMarker, 0);
     for (size_t block_i =0; block_i < readLen.size(); block_i ++)
     {
 
@@ -343,7 +342,7 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
             GENO[i] = (dataType*) (perMakerSizeOrig * i + bufferAllMarkers);
         }
         
-#pragma omp parallel for
+//#pragma omp parallel for
         for (size_t i = 0; i < readLen[block_i] ; i ++)
         {
             dataType* GENO_i = GENO[i] ;
@@ -358,15 +357,14 @@ vector<double>   BedFile::calcMaf (string bfileName, long int N, long int M, uin
                 sum_i    += countOnes[GENO_i [k] & marker];
             }
             // sum of alternative alleles / (2*sample size)
-            maf[startingIdx[block_i] + i]  = (double(sum_i  ) / 2 ) / (nKeptSample - nMissing ); 
+            maf[startingIdx[block_i] + i]  = (double(sum_i  ) / 2 ) / (nSample - nMissing ); 
+            nMissing_vec[startingIdx[block_i] + i]  = nMissing; 
         }
+        
         delete [] bufferAllMarkers;
         delete [] GENO;
     }
-    ofstream fout (bfileName + ".DENTIST.maf.txt");
-    for (size_t i = 0; i < maf.size(); i ++)
-        fout <<  maf[i] << endl;
-    fout.close();
+    this->nMissing =nMissing_vec;
     return maf;
 
 };
