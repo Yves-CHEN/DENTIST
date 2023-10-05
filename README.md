@@ -48,7 +48,7 @@ To run DENTIST at a targeted region specified by the rsID of variant (e.g. rs123
 >DENTIST --gwas-summary summary_data --bfile ref --out prefix --thread-num 10 --target rs1234
 
 To run DENTIST for allelic frequencies
-DENTIST --gwas-summary summary_data --bfile ref --out <prefix>   --freq
+>DENTIST --gwas-summary summary_data --bfile ref --out prefix   --freq
 
 
 # Input and output
@@ -70,7 +70,7 @@ rs140378 C G 0.05 0.007 0.02 0.7 6000
 Specifies the prefix of the output files including  \*.DENTIST.full.txt, \*.DENTIST.short.txt, \*.DENTIST.ignored.txt \*.frq.
 
 The .DENTIST.full.txt contains the statistics for all the tested variants in the following format, e.g. 
-> head -3 <prefix>.DENTIST.full.txt
+> head -3 \<prefix\>.DENTIST.full.txt
 
 ```
 rsID        chisq   -log10(P)  ifDup
@@ -83,14 +83,14 @@ As shown above, the first column contains the rsID for each variant, followed by
 The DENTIST.short.txt contains the rsIDs for variants that cannot pass DENTIST QC and are suggested for removal.
 
 The DENTIST.ignored.txt contains variants that are ignored through QC for reasons including 1) inconsistently found in summmary-data and PLINK files; 2) MAF threshold; 3) MAF difference threshold between MAFs from summary and reference data; 4) alleles do not match between summary and reference data. e.g.
-head -3 <prefix>.DENTIST.ignored.txt
+head -3 \<prefix\>.DENTIST.ignored.txt
 ```
 rs141578542     notFoundInGWAS
 chr22:16051722:D        notFoundInGWAS
 rs139918843     notFoundInGWAS
 ```
 
-The <prefix>.frq shows the allelic frequencies of the A1 allele specific by --freq flag, e.g. 
+The \<prefix\>.frq shows the allelic frequencies of the A1 allele specific by --freq flag, e.g. 
 
 ```
 chr     RS_ID   BP      A1      A2      Freq_A1 n       nMissingGeno
